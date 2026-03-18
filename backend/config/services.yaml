@@ -1,0 +1,42 @@
+parameters:
+    downloader.formats:
+        mp3: "-x --audio-format mp3 --audio-quality 0"
+        mp4: "-f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\""
+        webm: "-f \"bestvideo[ext=webm]+bestaudio[ext=webm]/best[ext=webm]/best\""
+        audio: "-x --audio-format best --audio-quality 0"
+        video: "-f \"bestvideo\""
+    downloader.allowed_hosts:
+        - youtube.com
+        - www.youtube.com
+        - youtu.be
+        - m.youtube.com
+        - music.youtube.com
+    redis_url: '%env(REDIS_URL)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Kernel.php'
+
+    App\Service\DownloaderService:
+        arguments:
+            $formats: '%downloader.formats%'
+            $allowedHosts: '%downloader.allowed_hosts%'
+            $providers: !tagged_iterator app.video_provider
+
+    App\MessageHandler\DownloadRequestHandler:
+        arguments:
+            $redisUrl: '%redis_url%'
+
+    App\Controller\DownloadController:
+        arguments:
+            $redisUrl: '%redis_url%'
+
+

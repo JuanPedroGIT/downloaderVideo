@@ -1,0 +1,85 @@
+
+services:
+  # ── Backend (Symfony 7 API) ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yt-downloader-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      APP_SECRET: "${APP_SECRET:-supersecretchangeme}"
+      CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$"
+      DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8080}"
+      MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "8080:8080"
+    volumes:
+      - tmp_downloads:/tmp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  # ── Background Worker (Symfony Messenger) ──────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yt-downloader-worker
+    restart: unless-stopped
+    command: ["php", "bin/console", "messenger:consume", "async", "-vv"]
+    environment:
+      APP_ENV: prod
+      APP_SECRET: "${APP_SECRET:-supersecretchangeme}"
+      MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
+      REDIS_URL: "redis://redis:6379"
+    volumes:
+      - tmp_downloads:/tmp
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  # ── Redis (Queue & State Store) ───────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: yt-downloader-redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ── Frontend (Vue 3 + Nginx) ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # VITE_API_URL is left empty – Nginx proxies /download & /health to the backend
+      # so the Vue app uses relative URLs (no CORS issues, no hard-coded addresses)
+    container_name: yt-downloader-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+# ── Shared volumes ─────────────────────────────────────────────────────────────
+volumes:
+  tmp_downloads:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+networks:
+  app-network:
+    driver: bridge
