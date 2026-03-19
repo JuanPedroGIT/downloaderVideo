@@ -14,10 +14,12 @@ services:
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8080}"
       MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
       REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/app?serverVersion=16&charset=utf8"
     ports:
       - "8080:8080"
     volumes:
       - tmp_downloads:/tmp
+      - ./backend/public/uploads:/app/public/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -26,6 +28,7 @@ services:
       start_period: 15s
     depends_on:
       - redis
+      - postgres
     networks:
       - app-network
 
@@ -42,10 +45,13 @@ services:
       APP_SECRET: "${APP_SECRET:-supersecretchangeme}"
       MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
       REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/app?serverVersion=16&charset=utf8"
     volumes:
       - tmp_downloads:/tmp
+      - ./backend/public/uploads:/app/public/uploads
     depends_on:
       - redis
+      - postgres
     networks:
       - app-network
 
@@ -54,6 +60,22 @@ services:
     image: redis:7-alpine
     container_name: yt-downloader-redis
     restart: unless-stopped
+    networks:
+      - app-network
+
+  # ── PostgreSQL (Database for QR Codes) ────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: yt-downloader-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     networks:
       - app-network
 
@@ -77,6 +99,8 @@ services:
 # ── Shared volumes ─────────────────────────────────────────────────────────────
 volumes:
   tmp_downloads:
+    driver: local
+  pgdata:
     driver: local
 
 # ── Networks ───────────────────────────────────────────────────────────────────

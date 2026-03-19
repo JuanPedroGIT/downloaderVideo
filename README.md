@@ -13,6 +13,9 @@
 - Premium dark glassmorphism UI
 - Fully Dockerized – runs with a single command
 - Deployable to Railway
+- **Dynamic QR Codes**: PostgreSQL-backed QR generator with click analytics.
+- **Persistent Local Storage**: Built-in HTTP client to fetch external images and persist them securely to Docker volumes.
+- **Progressive Web App (PWA)**: Desktop/Mobile installable interface.
 
 ---
 
@@ -125,6 +128,35 @@ Downloads a YouTube video/audio.
 ### `GET /health`
 
 Returns `{"status":"ok"}`.
+
+---
+
+## 🗄️ Dynamic QR Codes & Storage API
+
+### `GET /q/{id}`
+Redirects the user to the `target_url` defined in the PostgreSQL database for the given `{id}` and increments the internal click counter.
+
+### `GET /api/qr/generate/{id}`
+Produces an infinite-resolution **SVG** image of the QR code pointing to your redirect endpoint.
+
+### `POST /api/image/download`
+Downloads any external image URL and saves it persistently to the local Docker volume (`/app/public/uploads`).
+
+**Request**
+```json
+{
+  "url": "https://example.com/logo.png"
+}
+```
+
+**Response** (200 OK)
+```json
+{
+  "success": true,
+  "message": "Image successfully saved to persistent volume",
+  "local_url": "/uploads/images/img_x.jpg"
+}
+```
 
 ---
 
