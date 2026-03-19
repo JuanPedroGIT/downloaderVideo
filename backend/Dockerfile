@@ -49,10 +49,14 @@ COPY --from=builder /usr/bin/composer /usr/bin/composer
 # Create writable tmp dir
 RUN mkdir -p /tmp/downloads && chmod 777 /tmp/downloads
 
+# Copy start script
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["php", "-S", "0.0.0.0:8080", "-t", "public"]
+CMD ["/usr/local/bin/start.sh"]
