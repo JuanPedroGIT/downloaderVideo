@@ -35,10 +35,19 @@ class QrRedirectController extends AbstractController
     }
 
     #[Route('/api/qr/generate/{id}', name: 'qr_generate_image', methods: ['GET'])]
-    public function generateImage(string $id): Response
+    public function generateImage(string $id, \Symfony\Component\HttpFoundation\Request $request): Response
     {
-        // Generate the URL that the QR points to
-        $targetUrl = $this->generateUrl('qr_redirect', ['id' => $id], UrlGeneratorInterface::ABSOLUTE_URL);
+        // Force the correct domain resolution behind Railway's load balancers
+        if (isset($_ENV['RAILWAY_PUBLIC_DOMAIN'])) {
+            $base = 'https://' . rtrim($_ENV['RAILWAY_PUBLIC_DOMAIN'], '/');
+        } else {
+            $scheme = $request->headers->get('x-forwarded-proto', $request->getScheme());
+            $host = $request->headers->get('x-forwarded-host', $request->getHost());
+            $base = $scheme . '://' . $host;
+        }
+
+        // Generate the absolute URL that the QR points to
+        $targetUrl = $base . $this->generateUrl('qr_redirect', ['id' => $id]);
 
         $result = Builder::create()
             ->writer(new SvgWriter())
