@@ -148,11 +148,27 @@ class DownloaderService
      */
     private function runYtDlp(string $cwd, string $outputTemplate, array $extraArgs, ?callable $progressCallback): void
     {
-        // Add --ignore-errors, --js-runtimes, --yes-playlist and progress reporting
-        $command = array_merge(
-            ['yt-dlp', '--ignore-errors', '--js-runtimes', 'node', '--yes-playlist', '--newline', '-o', $outputTemplate],
-            $extraArgs,
-        );
+        // Bot evasion: use mobile clients and add some common bypass headers
+        $commonArgs = [
+            'yt-dlp',
+            '--ignore-errors',
+            '--js-runtimes', 'node',
+            '--yes-playlist',
+            '--newline',
+            '--extractor-args', 'youtube:player-client=android,web,mweb',
+            '-o', $outputTemplate
+        ];
+
+        // If cookies are provided via environment variable (as text), write to a temp file
+        $cookiesRaw = $_ENV['YT_COOKIES'] ?? getenv('YT_COOKIES') ?: null;
+        if ($cookiesRaw) {
+            $cookiesFile = $cwd . DIRECTORY_SEPARATOR . 'cookies.txt';
+            file_put_contents($cookiesFile, $cookiesRaw);
+            $commonArgs[] = '--cookies';
+            $commonArgs[] = $cookiesFile;
+        }
+
+        $command = array_merge($commonArgs, $extraArgs);
 
         $descriptors = [
             0 => ['pipe', 'r'],
