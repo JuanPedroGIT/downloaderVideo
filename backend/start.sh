@@ -7,7 +7,7 @@ for i in 1 2 3 4 5; do
 done
 
 # Start the built-in PHP server in the background
-php -S 0.0.0.0:8080 -t public &
+php -S 0.0.0.0:${PORT:-8080} -t public &
 
 # Start the Symfony Messenger worker in the foreground
 # This keeps the container alive
