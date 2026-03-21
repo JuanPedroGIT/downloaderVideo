@@ -116,12 +116,7 @@ export function useDownload() {
 
   function _triggerFileDownload(id) {
     const apiBase = import.meta.env.VITE_API_URL || ''
-    const anchor  = document.createElement('a')
-    anchor.href   = `${apiBase}/fetch/${id}`
-    anchor.style.display = 'none'
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
+    window.location.href = `${apiBase}/fetch/${id}`
   }
 
   return {

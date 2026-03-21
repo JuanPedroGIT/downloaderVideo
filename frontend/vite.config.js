@@ -8,6 +8,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['pwa-icon.svg'],
+      workbox: {
+        navigateFallbackDenylist: [
+          /^\/download/,
+          /^\/status/,
+          /^\/fetch/,
+          /^\/health/,
+          /^\/api/,
+          /^\/q\//,
+        ],
+      },
       manifest: {
         name: 'YT Downloader',
         short_name: 'YTDownloader',
