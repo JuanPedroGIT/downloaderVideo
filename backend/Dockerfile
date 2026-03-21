@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && docker-php-ext-install zip intl pdo pdo_pgsql \
-    && pecl install redis && docker-php-ext-enable redis \
+    && pecl install redis xdebug && docker-php-ext-enable redis xdebug \
     && pip3 install --break-system-packages yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
@@ -45,6 +45,7 @@ WORKDIR /app
 # Copy built application and composer from builder stage
 COPY --from=builder /app /app
 COPY --from=builder /usr/bin/composer /usr/bin/composer
+COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 # Create writable tmp dir
 RUN mkdir -p /tmp/downloads && chmod 777 /tmp/downloads
