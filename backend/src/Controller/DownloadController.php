@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Domain\Download\ValueObject\JobId;
+use App\Infrastructure\Repository\JobRepositoryInterface;
 use App\Message\DownloadRequest;
-use Predis\Client;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,17 +17,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
-
 class DownloadController
 {
-    private Client $redis;
-
     public function __construct(
         private readonly MessageBusInterface $bus,
-        string $redisUrl,
-    ) {
-        $this->redis = new Client($redisUrl);
-    }
+        private readonly JobRepositoryInterface $jobs,
+    ) {}
 
     #[Route('/download', name: 'download', methods: ['POST'])]
     public function download(Request $request): Response
@@ -43,48 +39,38 @@ class DownloadController
             throw new BadRequestHttpException('"format" field is required.');
         }
 
-        // 1. Generate unique Job ID
-        $jobId = bin2hex(random_bytes(16));
+        $jobId = JobId::generate();
 
-        // 2. Initialize job status in Redis
-        $this->redis->setex("job:{$jobId}", 3600, json_encode([
-            'id'       => $jobId,
-            'status'   => 'pending',
-            'progress' => 0,
-            'message'  => 'Queued...',
-            'url'      => $url,
-            'format'   => $format,
-        ]));
-
-        // 3. Dispatch message to queue
-        $this->bus->dispatch(new DownloadRequest($url, $format, $jobId));
+        $this->jobs->initialize($jobId, $url, $format);
+        $this->bus->dispatch(new DownloadRequest($url, $format, $jobId->value()));
 
         return new JsonResponse([
-            'jobId'  => $jobId,
-            'status' => 'pending'
+            'jobId'  => $jobId->value(),
+            'status' => 'pending',
         ], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/status/{jobId}', name: 'status', methods: ['GET'])]
     public function status(string $jobId): JsonResponse
     {
-        $data = $this->redis->get("job:{$jobId}");
-        if (!$data) {
+        $job = $this->jobs->find(JobId::fromString($jobId));
+
+        if ($job === null) {
             throw new NotFoundHttpException('Job not found or expired.');
         }
 
-        return new JsonResponse(json_decode($data, true));
+        return new JsonResponse($job);
     }
 
     #[Route('/fetch/{jobId}', name: 'fetch', methods: ['GET'])]
     public function fetch(string $jobId): Response
     {
-        $data = $this->redis->get("job:{$jobId}");
-        if (!$data) {
+        $job = $this->jobs->find(JobId::fromString($jobId));
+
+        if ($job === null) {
             throw new NotFoundHttpException('Job not found or expired.');
         }
 
-        $job = json_decode($data, true);
         if ($job['status'] !== 'completed') {
             throw new BadRequestHttpException('Job is not completed yet.');
         }
@@ -100,19 +86,11 @@ class DownloadController
             $job['filename'] ?? 'download'
         );
         $response->headers->set('Content-Type', $job['mimeType'] ?? 'application/octet-stream');
-
-        // Note: deleteFileAfterSend might be risky if we want to allow retries,
-        // but for now let's keep it to save space.
         $response->deleteFileAfterSend(true);
-        
-        // Remove from Redis after successful fetch (optional)
-        // $this->redis->del("job:{$jobId}");
 
         return $response;
     }
 
-
-    // ── Global error handler for bad requests ───────────────────────────────
     #[Route('/health', name: 'health', methods: ['GET'])]
     public function health(): JsonResponse
     {

@@ -23,20 +23,21 @@ services:
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
+            - '../src/Domain/Download/ValueObject/DownloadFormat.php'
             - '../src/Kernel.php'
 
+    # ── Redis client ──────────────────────────────────────────────────────────
+    Predis\Client:
+        arguments:
+            $parameters: '%redis_url%'
+
+    # ── Job repository ────────────────────────────────────────────────────────
+    App\Infrastructure\Repository\JobRepositoryInterface:
+        alias: App\Infrastructure\Repository\RedisJobRepository
+
+    # ── Downloader ────────────────────────────────────────────────────────────
     App\Service\DownloaderService:
         arguments:
             $formats: '%downloader.formats%'
             $allowedHosts: '%downloader.allowed_hosts%'
             $providers: !tagged_iterator app.video_provider
-
-    App\MessageHandler\DownloadRequestHandler:
-        arguments:
-            $redisUrl: '%redis_url%'
-
-    App\Controller\DownloadController:
-        arguments:
-            $redisUrl: '%redis_url%'
-
-

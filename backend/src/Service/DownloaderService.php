@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\Download\Exception\InvalidVideoUrlException;
+use App\Domain\Download\ValueObject\DownloadFormat;
+use App\Domain\Download\ValueObject\VideoUrl;
+use App\Infrastructure\FileSystem\TempWorkspace;
+use App\Infrastructure\Process\YtDlpRunner;
 use App\Service\Provider\VideoProviderInterface;
 use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
- * Central service responsible for orchestrating the download workflow:
- *   1. Validate URL (host whitelist)
- *   2. Validate requested format
- *   3. Select the appropriate provider
- *   4. Execute yt-dlp as a subprocess
- *   5. Locate and return the generated file path
+ * Orchestrates the download workflow:
+ *   1. Parse and validate URL / format as Value Objects
+ *   2. Select the appropriate provider
+ *   3. Create an isolated temp workspace
+ *   4. Run yt-dlp via YtDlpRunner
+ *   5. Return the resulting file info (or ZIP for playlists)
  */
 class DownloaderService
 {
@@ -23,47 +27,33 @@ class DownloaderService
         private readonly iterable $providers,
         private readonly array $formats,
         private readonly array $allowedHosts,
-    ) {
-    }
+        private readonly YtDlpRunner $ytDlpRunner,
+    ) {}
 
     /**
-     * Downloads the video/audio from the given URL in the requested format.
-     *
      * @param callable|null $progressCallback Optional function(int $percent) called during download.
      * @return array{path: string, filename: string, mimeType: string}
-     *
-     * @throws BadRequestHttpException on validation failure
-     * @throws RuntimeException        on download/process failure
      */
     public function download(string $url, string $format, ?callable $progressCallback = null): array
     {
-        $this->validateUrl($url);
-        $this->validateFormat($format);
+        $videoUrl       = VideoUrl::fromString($url);
+        $this->assertHostAllowed($videoUrl);
+        $downloadFormat = DownloadFormat::fromString($format);
 
-        $provider = $this->selectProvider($url);
-
-        $slug = bin2hex(random_bytes(8));
-        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dl_' . $slug;
-        if (!mkdir($tmpDir, 0700, true) && !is_dir($tmpDir)) {
-            throw new RuntimeException("Could not create temporary directory: {$tmpDir}");
-        }
+        $provider  = $this->selectProvider($videoUrl);
+        $slug      = bin2hex(random_bytes(8));
+        $workspace = new TempWorkspace($slug);
+        $workspace->create();
 
         try {
-            // Using a subfolder for the actual downloads allows easier ZIP creation later
-            $dlDir = $tmpDir . DIRECTORY_SEPARATOR . 'out';
-            mkdir($dlDir);
-            $outputTemplate = $dlDir . DIRECTORY_SEPARATOR . '%(title)s.%(ext)s';
-            
-            $args = $provider->buildArgs($url, $format, $this->formats);
+            $args = $provider->buildArgs($videoUrl->value(), $downloadFormat->value, $this->formats);
+            $this->ytDlpRunner->run($workspace->dlDir(), $workspace->outputTemplate(), $args, $progressCallback);
 
-            $this->runYtDlp($dlDir, $outputTemplate, $args, $progressCallback);
-
-            $files = glob($dlDir . DIRECTORY_SEPARATOR . '*');
-            if (!$files) {
+            $files = glob($workspace->dlDir() . DIRECTORY_SEPARATOR . '*') ?: [];
+            if (empty($files)) {
                 throw new RuntimeException('yt-dlp did not produce any output file.');
             }
 
-            // Return a single file or a ZIP if multiple files (playlist)
             if (count($files) === 1) {
                 $file = $files[0];
                 return [
@@ -73,165 +63,64 @@ class DownloaderService
                 ];
             }
 
-            // Multiple files (Playlist) -> ZIP
-            $zipPath = $tmpDir . DIRECTORY_SEPARATOR . "playlist_{$slug}.zip";
-            $zip = new \ZipArchive();
-            if ($zip->open($zipPath, \ZipArchive::CREATE) !== true) {
-                throw new RuntimeException("Failed to create ZIP archive: {$zipPath}");
-            }
-            foreach ($files as $file) {
-                // Ignore any partial downloads or dotfiles
-                if (is_file($file)) {
-                    $zip->addFile($file, basename($file));
-                }
-            }
-            $zip->close();
-
-            return [
-                'path'     => $zipPath,
-                'filename' => "playlist_{$slug}.zip",
-                'mimeType' => 'application/zip',
-            ];
+            return $this->createZip($workspace->rootDir(), $slug, $files);
         } catch (\Throwable $e) {
-            $this->cleanup($tmpDir);
+            $workspace->cleanup();
             throw $e;
         }
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────
 
-    private function validateUrl(string $url): void
+    private function assertHostAllowed(VideoUrl $url): void
     {
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            throw new BadRequestHttpException('Invalid URL provided.');
-        }
-
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-        // Simple host contains check for broader support
-        $isAllowed = false;
+        $host = $url->host();
         foreach ($this->allowedHosts as $allowed) {
             if (str_contains($host, $allowed)) {
-                $isAllowed = true;
-                break;
+                return;
             }
         }
 
-        if (!$isAllowed) {
-            throw new BadRequestHttpException(
-                "Host \"{$host}\" is not supported. Allowed: " . implode(', ', $this->allowedHosts)
-            );
-        }
+        throw new InvalidVideoUrlException(
+            "Host \"{$host}\" is not supported. Allowed: " . implode(', ', $this->allowedHosts)
+        );
     }
 
-    private function validateFormat(string $format): void
-    {
-        if (!isset($this->formats[$format])) {
-            throw new BadRequestHttpException(
-                "Format \"{$format}\" is not supported. Allowed: " . implode(', ', array_keys($this->formats))
-            );
-        }
-    }
-
-    private function selectProvider(string $url): VideoProviderInterface
+    private function selectProvider(VideoUrl $url): VideoProviderInterface
     {
         foreach ($this->providers as $provider) {
-            if ($provider->supports($url)) {
+            if ($provider->supports($url->value())) {
                 return $provider;
             }
         }
 
-        throw new BadRequestHttpException('No provider found for the given URL.');
+        throw new InvalidVideoUrlException('No provider found for the given URL.');
     }
 
-    /**
-     * Executes yt-dlp and waits for completion.
-     */
-    private function runYtDlp(string $cwd, string $outputTemplate, array $extraArgs, ?callable $progressCallback): void
+    /** @param string[] $files */
+    private function createZip(string $rootDir, string $slug, array $files): array
     {
-        // Bot evasion: use mobile clients and add some common bypass headers
-        $commonArgs = [
-            'yt-dlp',
-            '--ignore-errors',
-            '--js-runtimes', 'node',
-            '--yes-playlist',
-            '--newline',
-            '--extractor-args', 'youtube:player-client=android,web,mweb',
-            '-o', $outputTemplate
-        ];
+        $zipPath = $rootDir . DIRECTORY_SEPARATOR . "playlist_{$slug}.zip";
+        $zip     = new \ZipArchive();
 
-        // If cookies are provided via environment variable (as text), write to a temp file
-        $cookiesRaw = $_ENV['YT_COOKIES'] ?? getenv('YT_COOKIES') ?: null;
-        if ($cookiesRaw) {
-            $cookiesFile = $cwd . DIRECTORY_SEPARATOR . 'cookies.txt';
-            file_put_contents($cookiesFile, $cookiesRaw);
-            $commonArgs[] = '--cookies';
-            $commonArgs[] = $cookiesFile;
+        if ($zip->open($zipPath, \ZipArchive::CREATE) !== true) {
+            throw new RuntimeException("Failed to create ZIP archive: {$zipPath}");
         }
 
-        $command = array_merge($commonArgs, $extraArgs);
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'], // stdout (where progress is)
-            2 => ['pipe', 'w'], // stderr
-        ];
-
-        $process = proc_open($command, $descriptors, $pipes, $cwd);
-
-        if (!is_resource($process)) {
-            throw new RuntimeException('Failed to start yt-dlp process.');
-        }
-
-        fclose($pipes[0]);
-
-        // Non-blocking read for progress reporting
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $stdout = '';
-        $stderr = '';
-
-        while (true) {
-            $r = [$pipes[1], $pipes[2]];
-            $w = $e = null;
-            if (stream_select($r, $w, $e, 1) > 0) {
-                foreach ($r as $pipe) {
-                    $line = fgets($pipe);
-                    if ($line === false) continue;
-                    
-                    if ($pipe === $pipes[1]) {
-                        $stdout .= $line;
-                        // Extract progress: [download]  12.3% of 45.6MiB...
-                        if ($progressCallback && preg_match('/\[download\]\s+([\d\.]+)%/', $line, $matches)) {
-                            $progressCallback((int)$matches[1]);
-                        }
-                    } else {
-                        $stderr .= $line;
-                    }
-                }
-            }
-
-            $status = proc_get_status($process);
-            if (!$status['running']) {
-                break;
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $zip->addFile($file, basename($file));
             }
         }
 
-        // Catch remaining output
-        $stdout .= stream_get_contents($pipes[1]);
-        $stderr .= stream_get_contents($pipes[2]);
+        $zip->close();
 
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
-
-        if ($exitCode !== 0) {
-            throw new RuntimeException(
-                "yt-dlp exited with code {$exitCode}.\nSTDOUT: {$stdout}\nSTDERR: {$stderr}"
-            );
-        }
+        return [
+            'path'     => $zipPath,
+            'filename' => "playlist_{$slug}.zip",
+            'mimeType' => 'application/zip',
+        ];
     }
-
 
     private function guessMimeType(string $filePath, string $format): string
     {
@@ -249,20 +138,5 @@ class DownloaderService
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         return $map[$ext] ?? ($map[$format] ?? 'application/octet-stream');
-    }
-
-    public function cleanup(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        $files = glob($dir . DIRECTORY_SEPARATOR . '*');
-        if ($files) {
-            foreach ($files as $file) {
-                @unlink($file);
-            }
-        }
-        @rmdir($dir);
     }
 }
