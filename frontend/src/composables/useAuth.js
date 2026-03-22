@@ -2,12 +2,14 @@
  * Thin wrapper around the Pinia auth store.
  * Keeps backward compatibility with existing components that call useAuth().
  */
+import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth.js'
 import { apiFetch } from '../services/api.js'
 import router from '../router/index.js'
 
 export function useAuth() {
   const store = useAuthStore()
+  const { token, username, isAuthenticated } = storeToRefs(store)
 
   async function login(credentials) {
     return store.login(credentials)
@@ -27,9 +29,9 @@ export function useAuth() {
   }
 
   return {
-    token:           store.token,
-    username:        store.username,
-    isAuthenticated: store.isAuthenticated,
+    token,
+    username,
+    isAuthenticated,
     login,
     logout,
     authHeaders,
