@@ -1,0 +1,24 @@
+# nixpacks.toml – Railway deployment configuration
+# Used when Railway is configured to build with Nixpacks instead of Dockerfile.
+#
+# Adds LibreOffice (DOCX→PDF) and Ghostscript (PDF normalisation for FPDI)
+# on top of the PHP 8.3 base that Nixpacks auto-detects from composer.json.
+
+[phases.setup]
+nixPkgs = [
+    "libreoffice-bin",   # DOCX → PDF via --headless mode
+    "ghostscript",       # Downgrade PDF to v1.4 for FPDI compatibility
+]
+
+[phases.install]
+cmds = [
+    "composer install --no-dev --optimize-autoloader --no-interaction",
+]
+
+[phases.build]
+cmds = [
+    "php bin/console cache:warmup --env=prod",
+]
+
+[start]
+cmd = "sh start.sh"

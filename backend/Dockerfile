@@ -30,9 +30,13 @@ RUN composer run-script post-install-cmd --no-interaction || true
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM php:8.3-cli AS runtime
 
-# Install ffmpeg + yt-dlp + nodejs (for JS runtime) + runtime system deps
+# Install runtime system deps:
+#   - ffmpeg + yt-dlp + nodejs  → video downloader feature
+#   - libreoffice               → DOCX → PDF conversion
+#   - ghostscript               → PDF normalisation to v1.4 (required by FPDI)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip ffmpeg curl libzip-dev libicu-dev gnupg libpq-dev \
+        libreoffice-writer libreoffice-common ghostscript \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && docker-php-ext-install zip intl pdo pdo_pgsql \
