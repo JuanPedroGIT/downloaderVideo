@@ -1,246 +1,249 @@
-# 📥 YT Downloader
+# Media Tools
 
-> A full-stack YouTube downloader built with **Vue 3 + Vite** (frontend) and **Symfony 7** (backend API), fully containerized with Docker.
+Full-stack web application with three tools: YouTube video downloader, document management (DOCX→PDF + PDF merge), and a QR code admin panel.
 
----
+## Stack
 
-## ✨ Features
-
-- Download YouTube videos in **MP4**, **WebM**, video-only
-- Extract audio as **MP3** or best-quality audio
-- URL validation (frontend + backend)
-- Modular provider architecture (add Vimeo, TikTok, etc.)
-- Premium dark glassmorphism UI
-- Fully Dockerized – runs with a single command
-- Deployable to Railway
-- **Dynamic QR Codes**: PostgreSQL-backed QR generator with click analytics.
-- **Persistent Local Storage**: Built-in HTTP client to fetch external images and persist them securely to Docker volumes.
-- **Progressive Web App (PWA)**: Desktop/Mobile installable interface.
+| Layer | Technology |
+|---|---|
+| Backend | Symfony 7, PHP 8.3, Doctrine ORM, Symfony Messenger |
+| Queue | Redis + Symfony Redis Messenger Transport |
+| Database | PostgreSQL 16 |
+| Frontend | Vue 3, Vite, Vue Router 4, PWA (vite-plugin-pwa) |
+| Proxy | Nginx (envsubst for configurable upstream) |
+| Deployment | Docker Compose (local) / Railway + Nixpacks (production) |
 
 ---
 
-## 🏗 Project Structure
+## Features
+
+### Video Downloader (`/video`)
+- Download YouTube videos and audio via yt-dlp
+- Formats: MP4, MP3, WebM, best audio, best video
+- Async job queue with live progress via polling
+- Supported hosts: youtube.com, youtu.be, music.youtube.com
+
+### Document Tools (`/docs`)
+- Upload DOCX or PDF files (drag & drop, reorder)
+- DOCX → PDF conversion via LibreOffice headless
+- PDF merge via FPDI (PDFs normalized to v1.4 with Ghostscript)
+- Download result as a single merged PDF
+
+### QR Code Admin Panel (`/admin`)
+- Login with username + password stored in PostgreSQL
+- JWT authentication (HS256, 24h expiry — native PHP, no external library)
+- Full CRUD: create, edit, activate/deactivate, delete QR codes
+- View QR image inline (SVG modal)
+- QR codes redirect via `/q/{id}` and increment click counter
+
+---
+
+## Architecture
+
+### Backend (DDD + CQRS)
 
 ```
-downloadVideo/
-├── backend/                 # Symfony 7 API
-│   ├── src/
-│   │   ├── Controller/
-│   │   │   └── DownloadController.php
-│   │   ├── Service/
-│   │   │   ├── DownloaderService.php
-│   │   │   └── Provider/
-│   │   │       ├── VideoProviderInterface.php
-│   │   │       └── YouTubeProvider.php
-│   │   └── Kernel.php
-│   ├── config/
-│   │   └── packages/
-│   │       ├── downloader.yaml    ← format config
-│   │       ├── nelmio_cors.yaml
-│   │       └── framework.yaml
-│   ├── public/index.php
-│   └── Dockerfile
-├── frontend/                # Vue 3 + Vite SPA
-│   ├── src/
-│   │   ├── App.vue
-│   │   ├── main.js
-│   │   └── style.css
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── nginx.conf
-│   └── Dockerfile
-└── docker-compose.yml
+backend/src/
+├── Controller/
+│   ├── DownloadController.php
+│   ├── DocumentController.php
+│   ├── AdminController.php        # QR CRUD + login
+│   └── QrRedirectController.php   # /q/{id} redirect + SVG generation
+├── Domain/Download/
+│   ├── Exception/                 # InvalidVideoUrlException, UnsupportedFormatException
+│   └── ValueObject/               # VideoUrl, DownloadFormat, JobId
+├── Entity/
+│   ├── QrCode.php
+│   └── AdminUser.php
+├── EventListener/
+│   └── JwtAuthListener.php        # Guards /api/admin/* routes
+├── Infrastructure/
+│   ├── FileSystem/TempWorkspace.php
+│   ├── Process/YtDlpRunner.php
+│   └── Repository/                # JobRepositoryInterface / RedisJobRepository
+├── Message/                       # Symfony Messenger commands
+├── MessageHandler/                # Async download handler
+├── Service/
+│   ├── DownloaderService.php
+│   ├── DocumentService.php
+│   └── JwtService.php             # HS256 JWT (hash_hmac, no library)
+└── Command/
+    └── CreateAdminUserCommand.php  # app:admin:create
+```
+
+### Frontend (Vue 3 SPA)
+
+```
+frontend/src/
+├── pages/
+│   ├── HomePage.vue       # Landing with links to tools
+│   ├── VideoPage.vue      # Video downloader
+│   ├── DocumentPage.vue   # Document tools
+│   └── AdminPage.vue      # QR admin panel (login + CRUD + QR modal)
+├── components/
+│   ├── DocumentManager.vue
+│   ├── FormatSelector.vue
+│   ├── ProgressBar.vue
+│   └── StatusMessage.vue
+├── composables/useDownload.js
+└── router/index.js        # /, /video, /docs, /admin
+```
+
+### Database Migrations
+
+```
+backend/migrations/
+├── Version20260321000000.php   # Creates qr_code table
+└── Version20260322000001.php   # Creates admin_user table
 ```
 
 ---
 
-## 🚀 Quick Start (Docker Compose)
+## Quick Start
 
-> **Requirements**: Docker Desktop 4.x+
+**Requirements**: Docker Desktop
 
 ```bash
-# 1. Clone / enter the project
-cd downloadVideo
-
-# 2. Build and start all services
-docker compose up --build
-
-# 3. Open the app
-open http://localhost:5173
+make up
 ```
 
-The backend API is available at `http://localhost:8080`.
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8080 |
+| PostgreSQL | localhost:5432 |
+
+### Create first admin user
+
+```bash
+docker exec -it yt-downloader-backend php bin/console app:admin:create
+```
+
+Then go to http://localhost:5173/admin.
 
 ---
 
-## 🔧 Development (without Docker)
+## Makefile Commands
+
+```bash
+make up                # Start all services
+make down              # Stop all services
+make rebuild           # Rebuild and restart everything
+make logs              # Follow all logs
+make shell             # Shell into backend container
+make migrate           # Run pending migrations
+make migration-diff    # Generate migration from entity changes
+make cache-clear       # Clear Symfony cache
+make test              # Run all tests (PHP + JS)
+make test-unit         # PHP unit tests only
+make test-frontend     # Vitest frontend tests
+```
+
+---
+
+## Environment Variables
 
 ### Backend
 
-```bash
-cd backend
-composer install
-php -S 0.0.0.0:8080 -t public
-```
-
-> **Requirements**: PHP 8.3, Composer, `yt-dlp`, `ffmpeg` installed on your machine.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev          # http://localhost:5173
-```
-
----
-
-## 🌐 API Reference
-
-### `POST /download`
-
-Downloads a YouTube video/audio.
-
-**Request**
-```json
-{
-  "url": "https://youtu.be/dQw4w9WgXcQ",
-  "format": "mp3"
-}
-```
-
-**Supported formats**
-
-| Format  | Description                   |
-|---------|-------------------------------|
-| `mp4`   | Video + audio (best quality)  |
-| `mp3`   | Audio only – MP3              |
-| `webm`  | Video in WebM format          |
-| `audio` | Best quality audio            |
-| `video` | Video only (no audio)         |
-
-**Response**: Binary file stream with `Content-Disposition: attachment` header.
-
-**Error responses** (JSON):
-- `400 Bad Request` – invalid URL, unsupported host, unknown format
-- `500 Internal Server Error` – yt-dlp execution failure
-
-### `GET /health`
-
-Returns `{"status":"ok"}`.
-
----
-
-## 🗄️ Dynamic QR Codes & Storage API
-
-### `GET /q/{id}`
-Redirects the user to the `target_url` defined in the PostgreSQL database for the given `{id}` and increments the internal click counter.
-
-### `GET /api/qr/generate/{id}`
-Produces an infinite-resolution **SVG** image of the QR code pointing to your redirect endpoint.
-
-### `POST /api/image/download`
-Downloads any external image URL and saves it persistently to the local Docker volume (`/app/public/uploads`).
-
-**Request**
-```json
-{
-  "url": "https://example.com/logo.png"
-}
-```
-
-**Response** (200 OK)
-```json
-{
-  "success": true,
-  "message": "Image successfully saved to persistent volume",
-  "local_url": "/uploads/images/img_x.jpg"
-}
-```
-
----
-
-## 🧪 Testing the API
-
-```bash
-# Download MP3
-curl -X POST http://localhost:8080/download \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://youtu.be/dQw4w9WgXcQ","format":"mp3"}' \
-  -o audio.mp3
-
-# Download MP4
-curl -X POST http://localhost:8080/download \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://youtu.be/dQw4w9WgXcQ","format":"mp4"}' \
-  -o video.mp4
-
-# Invalid URL (expect 400)
-curl -X POST http://localhost:8080/download \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://google.com","format":"mp3"}' -v
-```
-
----
-
-## ⚙️ Adding New Formats
-
-Edit `backend/config/packages/downloader.yaml`. No code changes needed:
-
-```yaml
-downloader:
-  formats:
-    aac: "-x --audio-format aac"
-    # add your format here
-```
-
----
-
-## ➕ Adding New Providers (Vimeo, TikTok…)
-
-1. Create a class in `backend/src/Service/Provider/`  
-2. Implement `VideoProviderInterface`  
-3. Add the `#[AutoconfigureTag('app.video_provider')]` attribute  
-4. Add the host to `$allowedHosts` in `services.yaml`
-
-That's it – no controller changes needed.
-
----
-
-## 🚂 Deploy to Railway
-
-### Backend
-
-1. Create a new Railway project → **New Service → GitHub Repo → `/backend`**
-2. Railway auto-detects the Dockerfile
-3. Set environment variables:
-   ```
-   APP_ENV=prod
-   APP_SECRET=<random_32_chars>
-   CORS_ALLOW_ORIGIN=https://your-frontend.railway.app
-   ```
-4. Add a custom start command (optional): `php -S 0.0.0.0:$PORT -t public`
+| Variable | Description |
+|---|---|
+| `APP_SECRET` | Symfony app secret |
+| `JWT_SECRET` | Secret for signing JWT tokens (HS256) |
+| `DATABASE_URL` | PostgreSQL DSN |
+| `REDIS_URL` | Redis connection URL |
+| `MESSENGER_TRANSPORT_DSN` | Symfony Messenger transport DSN |
+| `DEFAULT_URI` | Base URL used for QR generation |
 
 ### Frontend
 
-1. Add another service → `/frontend`
-2. Set build argument:
-   ```
-   VITE_API_URL=https://your-backend.railway.app
-   ```
-3. Railway builds with the Dockerfile and serves via Nginx
+| Variable | Description | Default |
+|---|---|---|
+| `BACKEND_UPSTREAM` | Backend URL for Nginx proxy | `http://backend:8080` |
 
 ---
 
-## 🔒 Security Notes
+## Railway Deployment
 
-- URL host is validated against an allow-list (YouTube only by default)
-- Format is validated against the YAML config
-- `yt-dlp` is invoked via `proc_open` with an **argument array** (no shell injection possible)
-- Temporary files are deleted after the response is sent
+### Backend service
+```
+APP_SECRET=<random 32 char string>
+JWT_SECRET=<random secret>
+DATABASE_URL=<postgresql DSN from Railway>
+REDIS_URL=<redis DSN from Railway>
+MESSENGER_TRANSPORT_DSN=<redis DSN from Railway>
+RAILWAY_PUBLIC_DOMAIN=<your-backend.railway.app>
+```
+
+Create the first admin user via Railway CLI:
+```bash
+# Install CLI if you don't have it
+npm install -g @railway/cli
+
+# Login and link project
+railway login
+railway link
+
+# Open shell in backend service
+railway shell --service backend
+
+# Then inside the shell:
+php bin/console app:admin:create
+```
+
+### Frontend service
+```
+BACKEND_UPSTREAM=https://<your-backend.railway.app>
+```
 
 ---
 
-## 📄 License
+## API Reference
+
+### Public endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `POST` | `/download` | Start async download job |
+| `GET` | `/status/{jobId}` | Poll job status |
+| `GET` | `/fetch/{jobId}` | Download finished file |
+| `POST` | `/api/documents/merge` | Merge/convert documents |
+| `GET` | `/q/{id}` | QR redirect (increments click counter) |
+| `GET` | `/api/qr/generate/{id}` | Generate QR SVG image |
+
+### Admin endpoints (JWT required)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/admin/login` | Login, returns JWT token |
+| `GET` | `/api/admin/qrcodes` | List all QR codes |
+| `POST` | `/api/admin/qrcodes` | Create a QR code |
+| `PATCH` | `/api/admin/qrcodes/{id}` | Update targetUrl or isActive |
+| `DELETE` | `/api/admin/qrcodes/{id}` | Delete a QR code |
+
+### Download formats
+
+| Format | Description |
+|---|---|
+| `mp4` | Video + audio (best quality) |
+| `mp3` | Audio only – MP3 |
+| `webm` | Video in WebM |
+| `audio` | Best quality audio |
+| `video` | Video only (no audio) |
+
+---
+
+## Security
+
+- URL host validated against an allow-list (YouTube only by default)
+- Format validated against config
+- `yt-dlp` invoked via `proc_open` with argument array (no shell injection)
+- JWT signed with HS256 using `hash_hmac` — no external library, no security advisories
+- Admin passwords stored as bcrypt hashes (`password_hash`)
+- Temporary files deleted after response is sent
+
+---
+
+## License
 
 MIT
