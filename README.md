@@ -182,7 +182,8 @@ npm install -g @railway/cli
 # Login and link project
 railway login
 railway link
-
+#para entra en la terminal
+railway ssh
 # Open shell in backend service
 railway shell --service backend
 

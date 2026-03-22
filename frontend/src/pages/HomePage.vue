@@ -43,6 +43,10 @@
         <span class="tool-card__arrow">→</span>
       </RouterLink>
     </div>
+
+    <footer class="home__footer">
+      <RouterLink to="/admin" class="admin-link">Admin Panel</RouterLink>
+    </footer>
   </main>
 </template>
 
@@ -168,5 +172,22 @@ import { RouterLink } from 'vue-router'
 .tool-card:hover .tool-card__arrow {
   color: var(--grad-start);
   transform: translateX(3px);
+}
+
+.home__footer {
+  margin-top: 1rem;
+}
+
+.admin-link {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.admin-link:hover {
+  opacity: 1;
+  color: var(--text-secondary);
 }
 </style>

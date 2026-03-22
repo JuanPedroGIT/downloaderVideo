@@ -147,6 +147,8 @@ async function doLogin() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials.value),
     })
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.includes('application/json')) throw new Error(`Server error (HTTP ${res.status})`)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Login failed')
     token.value    = data.token
@@ -178,6 +180,10 @@ async function apiFetch(path, options = {}) {
   const res = await fetch(path, { ...options, headers: authHeaders() })
   if (res.status === 401) { logout(); return null }
   if (res.status === 204) return null
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    throw new Error(`Server error (HTTP ${res.status})`)
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
   return data
