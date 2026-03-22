@@ -21,8 +21,12 @@ FROM nginx:1.25-alpine AS runtime
 # Remove default config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy custom Nginx config
-COPY nginx.conf /etc/nginx/conf.d/app.conf
+# Copy config as a template – nginx entrypoint runs envsubst on /etc/nginx/templates/
+# and outputs the result to /etc/nginx/conf.d/ before starting nginx.
+COPY nginx.conf /etc/nginx/templates/app.conf.template
+
+# Default upstream (Docker Compose). Override in Railway with BACKEND_UPSTREAM env var.
+ENV BACKEND_UPSTREAM=http://backend:8080
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html

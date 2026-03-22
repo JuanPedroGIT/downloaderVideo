@@ -90,6 +90,8 @@ services:
       # so the Vue app uses relative URLs (no CORS issues, no hard-coded addresses)
     container_name: yt-downloader-frontend
     restart: unless-stopped
+    environment:
+      BACKEND_UPSTREAM: "http://backend:8080"
     ports:
       - "5173:80"
     depends_on:
