@@ -8,8 +8,8 @@ yarn-error.log*
 # PHP / Symfony (Backend)
 /backend/vendor/
 /backend/var/
-backend/.env
-backend/.env.test
+/backend/.env
+/backend/.env.test
 /backend/*.log
 /backend/public/uploads/
 
@@ -30,5 +30,4 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-
 *.env

@@ -78,7 +78,7 @@ html, body {
   z-index: 1;
   width: 100%;
   max-width: 560px;
-  margin: 2rem;
+  margin: 2rem auto;
   padding: 2.5rem 2.75rem;
   background: var(--bg-card);
   backdrop-filter: blur(28px) saturate(180%);
