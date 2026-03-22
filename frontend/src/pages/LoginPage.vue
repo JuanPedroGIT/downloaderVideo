@@ -17,13 +17,15 @@
           {{ loading ? 'Logging in…' : 'Log in' }}
         </button>
       </form>
+      <p class="auth-links"><RouterLink to="/forgot-password">Forgot password?</RouterLink></p>
+      <p class="auth-links">Don't have an account? <RouterLink to="/register">Register</RouterLink></p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 
 const { login } = useAuth()
@@ -118,4 +120,7 @@ async function doLogin() {
   font-size: 0.85rem;
   text-align: left;
 }
+.auth-links { font-size: 0.85rem; color: var(--text-secondary); text-align: center; }
+.auth-links a { color: var(--grad-start); text-decoration: none; }
+.auth-links a:hover { text-decoration: underline; }
 </style>

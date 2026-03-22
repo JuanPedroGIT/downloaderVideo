@@ -40,6 +40,10 @@ final class AdminController
             return new JsonResponse(['error' => 'Invalid credentials.'], Response::HTTP_UNAUTHORIZED);
         }
 
+        if (!$user->isVerified() && $user->getEmail() !== null) {
+            return new JsonResponse(['error' => 'Please verify your email before logging in.'], Response::HTTP_FORBIDDEN);
+        }
+
         return new JsonResponse([
             'token'     => $this->jwtService->generate($user->getId(), $user->getUsername()),
             'expiresIn' => 86400,

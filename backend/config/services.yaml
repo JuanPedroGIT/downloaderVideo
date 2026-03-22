@@ -13,6 +13,8 @@ parameters:
         - music.youtube.com
     redis_url: '%env(REDIS_URL)%'
     jwt_secret: '%env(JWT_SECRET)%'
+    brevo_api_key: '%env(BREVO_API_KEY)%'
+    default_uri: '%env(DEFAULT_URI)%'
 
 services:
     _defaults:
@@ -42,6 +44,14 @@ services:
             $secret: '%jwt_secret%'
 
     # ── Downloader ────────────────────────────────────────────────────────────
+    App\Service\BrevoMailer:
+        arguments:
+            $brevoApiKey: '%brevo_api_key%'
+
+    App\Controller\AuthController:
+        arguments:
+            $defaultUri: '%default_uri%'
+
     App\Service\DownloaderService:
         arguments:
             $formats: '%downloader.formats%'
