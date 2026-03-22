@@ -38,20 +38,40 @@ services:
     App\Infrastructure\Repository\JobRepositoryInterface:
         alias: App\Infrastructure\Repository\RedisJobRepository
 
+    # ── User repository ───────────────────────────────────────────────────────
+    App\Domain\Auth\Repository\AdminUserRepositoryInterface:
+        alias: App\Infrastructure\Repository\DoctrineAdminUserRepository
+
+    # ── QrCode repository ─────────────────────────────────────────────────────
+    App\Domain\QrCode\Repository\QrCodeRepositoryInterface:
+        alias: App\Infrastructure\Repository\DoctrineQrCodeRepository
+
     # ── JWT ───────────────────────────────────────────────────────────────────
-    App\Service\JwtService:
+    App\Infrastructure\Security\JwtServiceInterface:
+        alias: App\Infrastructure\Security\JwtService
+
+    App\Infrastructure\Security\JwtService:
         arguments:
             $secret: '%jwt_secret%'
 
-    # ── Downloader ────────────────────────────────────────────────────────────
-    App\Service\BrevoMailer:
+    # ── Email ─────────────────────────────────────────────────────────────────
+    App\Infrastructure\Email\MailerInterface:
+        alias: App\Infrastructure\Email\BrevoMailer
+
+    App\Infrastructure\Email\BrevoMailer:
         arguments:
             $brevoApiKey: '%brevo_api_key%'
 
-    App\Controller\AuthController:
+    # ── Auth handlers ─────────────────────────────────────────────────────────
+    App\Application\Auth\Register\RegisterUserHandler:
         arguments:
             $defaultUri: '%default_uri%'
 
+    App\Application\Auth\RequestPasswordReset\RequestPasswordResetHandler:
+        arguments:
+            $defaultUri: '%default_uri%'
+
+    # ── Downloader ────────────────────────────────────────────────────────────
     App\Service\DownloaderService:
         arguments:
             $formats: '%downloader.formats%'

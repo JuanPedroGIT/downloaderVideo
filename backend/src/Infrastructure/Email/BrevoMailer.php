@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Infrastructure\Email;
 
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class BrevoMailer
+final class BrevoMailer implements MailerInterface
 {
     private const API_URL    = 'https://api.brevo.com/v3/smtp/email';
     private const FROM_EMAIL = 'salumvi@gmail.com';
@@ -17,14 +17,14 @@ final class BrevoMailer
         private readonly string $brevoApiKey,
     ) {}
 
-    public function sendVerificationEmail(string $to, string $username, string $verificationUrl): void
+    public function sendVerificationEmail(string $email, string $username, string $verificationUrl): void
     {
-        $this->send($to, $username, 'Verify your email address', $this->verificationHtml($username, $verificationUrl));
+        $this->send($email, $username, 'Verify your email address', $this->verificationHtml($username, $verificationUrl));
     }
 
-    public function sendPasswordResetEmail(string $to, string $username, string $resetUrl): void
+    public function sendPasswordResetEmail(string $email, string $username, string $resetUrl): void
     {
-        $this->send($to, $username, 'Reset your password', $this->resetHtml($username, $resetUrl));
+        $this->send($email, $username, 'Reset your password', $this->resetHtml($username, $resetUrl));
     }
 
     private function send(string $toEmail, string $toName, string $subject, string $htmlContent): void

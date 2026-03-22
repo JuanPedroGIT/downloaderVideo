@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
-use App\Service\JwtService;
+use App\Infrastructure\Security\JwtServiceInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Validates JWT tokens on all /api/admin/* routes except /api/admin/login.
+ * Validates JWT tokens on all /api/admin/* routes.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 10)]
 final class JwtAuthListener
 {
-    public function __construct(private readonly JwtService $jwtService) {}
+    public function __construct(private readonly JwtServiceInterface $jwt) {}
 
     public function __invoke(RequestEvent $event): void
     {
@@ -26,7 +26,7 @@ final class JwtAuthListener
 
         $path = $event->getRequest()->getPathInfo();
 
-        if (!str_starts_with($path, '/api/admin/') || $path === '/api/admin/login') {
+        if (!str_starts_with($path, '/api/admin/')) {
             return;
         }
 
@@ -38,7 +38,7 @@ final class JwtAuthListener
         }
 
         try {
-            $payload = $this->jwtService->decode(substr($authHeader, 7));
+            $payload = $this->jwt->decode(substr($authHeader, 7));
             $event->getRequest()->attributes->set('_jwt_user_id', $payload->sub);
             $event->getRequest()->attributes->set('_jwt_username', $payload->username);
         } catch (\Throwable) {

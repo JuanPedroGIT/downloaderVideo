@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\AdminUser;
-use App\Service\BrevoMailer;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Application\Auth\Login\LoginCommand;
+use App\Application\Auth\Login\LoginHandler;
+use App\Application\Auth\Register\RegisterUserCommand;
+use App\Application\Auth\Register\RegisterUserHandler;
+use App\Application\Auth\RequestPasswordReset\RequestPasswordResetCommand;
+use App\Application\Auth\RequestPasswordReset\RequestPasswordResetHandler;
+use App\Application\Auth\ResetPassword\ResetPasswordCommand;
+use App\Application\Auth\ResetPassword\ResetPasswordHandler;
+use App\Application\Auth\VerifyEmail\VerifyEmailCommand;
+use App\Application\Auth\VerifyEmail\VerifyEmailHandler;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,12 +23,32 @@ use Symfony\Component\Routing\Attribute\Route;
 final class AuthController
 {
     public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly BrevoMailer $mailer,
-        private readonly string $defaultUri,
+        private readonly LoginHandler $loginHandler,
+        private readonly RegisterUserHandler $registerHandler,
+        private readonly VerifyEmailHandler $verifyEmailHandler,
+        private readonly RequestPasswordResetHandler $requestResetHandler,
+        private readonly ResetPasswordHandler $resetPasswordHandler,
     ) {}
 
-    // ── POST /api/auth/register ───────────────────────────────────────────────
+    #[Route('/login', name: 'auth_login', methods: ['POST'])]
+    public function login(Request $request): JsonResponse
+    {
+        $data     = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $username = trim((string) ($data['username'] ?? ''));
+        $password = (string) ($data['password'] ?? '');
+
+        if ($username === '' || $password === '') {
+            return new JsonResponse(['error' => 'Username and password are required.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $result = $this->loginHandler->handle(new LoginCommand($username, $password));
+
+        return new JsonResponse([
+            'token'     => $result->token,
+            'expiresIn' => $result->expiresIn,
+            'username'  => $result->username,
+        ]);
+    }
 
     #[Route('/register', name: 'auth_register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
@@ -47,42 +74,13 @@ final class AuthController
             return new JsonResponse(['error' => 'Password must be at least 8 characters.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ($this->em->getRepository(AdminUser::class)->findOneBy(['email' => $email])) {
-            return new JsonResponse(['error' => 'This email is already registered.'], Response::HTTP_CONFLICT);
-        }
-
-        if ($this->em->getRepository(AdminUser::class)->findOneBy(['username' => $username])) {
-            return new JsonResponse(['error' => 'This username is already taken.'], Response::HTTP_CONFLICT);
-        }
-
-        $token  = AdminUser::generateToken();
-        $expiry = new \DateTimeImmutable('+24 hours');
-
-        $user = (new AdminUser())
-            ->setEmail($email)
-            ->setUsername($username)
-            ->setPasswordHash(password_hash($password, PASSWORD_BCRYPT))
-            ->setVerificationToken($token)
-            ->setVerificationTokenExpires($expiry);
-
-        $this->em->persist($user);
-        $this->em->flush();
-
-        $verificationUrl = rtrim($this->defaultUri, '/') . '/verify-email?token=' . $token;
-
-        try {
-            $this->mailer->sendVerificationEmail($email, $username, $verificationUrl);
-        } catch (\Throwable) {
-            // Account created — email failure is non-fatal
-        }
+        $this->registerHandler->handle(new RegisterUserCommand($email, $username, $password));
 
         return new JsonResponse(
             ['message' => 'Registration successful. Please check your email to verify your account.'],
             Response::HTTP_CREATED
         );
     }
-
-    // ── GET /api/auth/verify-email?token=xxx ──────────────────────────────────
 
     #[Route('/verify-email', name: 'auth_verify_email', methods: ['GET'])]
     public function verifyEmail(Request $request): JsonResponse
@@ -93,24 +91,10 @@ final class AuthController
             return new JsonResponse(['error' => 'Token is required.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = $this->em->getRepository(AdminUser::class)->findOneBy(['verificationToken' => $token]);
-
-        if (!$user) {
-            return new JsonResponse(['error' => 'Invalid or already used verification link.'], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($user->getVerificationTokenExpires() < new \DateTimeImmutable()) {
-            return new JsonResponse(['error' => 'Verification link has expired. Please register again.'], Response::HTTP_GONE);
-        }
-
-        $user->setIsVerified(true);
-        $user->clearVerificationToken();
-        $this->em->flush();
+        $this->verifyEmailHandler->handle(new VerifyEmailCommand($token));
 
         return new JsonResponse(['message' => 'Email verified successfully. You can now log in.']);
     }
-
-    // ── POST /api/auth/request-reset ─────────────────────────────────────────
 
     #[Route('/request-reset', name: 'auth_request_reset', methods: ['POST'])]
     public function requestReset(Request $request): JsonResponse
@@ -118,38 +102,11 @@ final class AuthController
         $data  = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $email = strtolower(trim((string) ($data['email'] ?? '')));
 
-        // Always return 200 to prevent email enumeration
-        $ok = new JsonResponse(['message' => 'If that email is registered, a reset link has been sent.']);
+        // Always 200 — never reveals whether email exists
+        $this->requestResetHandler->handle(new RequestPasswordResetCommand($email));
 
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $ok;
-        }
-
-        $user = $this->em->getRepository(AdminUser::class)->findOneBy(['email' => $email]);
-
-        if (!$user || !$user->isVerified()) {
-            return $ok;
-        }
-
-        $token  = AdminUser::generateToken();
-        $expiry = new \DateTimeImmutable('+1 hour');
-
-        $user->setResetToken($token);
-        $user->setResetTokenExpires($expiry);
-        $this->em->flush();
-
-        $resetUrl = rtrim($this->defaultUri, '/') . '/reset-password?token=' . $token;
-
-        try {
-            $this->mailer->sendPasswordResetEmail($email, $user->getUsername(), $resetUrl);
-        } catch (\Throwable) {
-            // Silently swallow
-        }
-
-        return $ok;
+        return new JsonResponse(['message' => 'If that email is registered, a reset link has been sent.']);
     }
-
-    // ── POST /api/auth/reset-password ─────────────────────────────────────────
 
     #[Route('/reset-password', name: 'auth_reset_password', methods: ['POST'])]
     public function resetPassword(Request $request): JsonResponse
@@ -166,19 +123,7 @@ final class AuthController
             return new JsonResponse(['error' => 'Password must be at least 8 characters.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = $this->em->getRepository(AdminUser::class)->findOneBy(['resetToken' => $token]);
-
-        if (!$user) {
-            return new JsonResponse(['error' => 'Invalid or already used reset link.'], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($user->getResetTokenExpires() < new \DateTimeImmutable()) {
-            return new JsonResponse(['error' => 'Reset link has expired. Please request a new one.'], Response::HTTP_GONE);
-        }
-
-        $user->setPasswordHash(password_hash($password, PASSWORD_BCRYPT));
-        $user->clearResetToken();
-        $this->em->flush();
+        $this->resetPasswordHandler->handle(new ResetPasswordCommand($token, $password));
 
         return new JsonResponse(['message' => 'Password updated successfully. You can now log in.']);
     }

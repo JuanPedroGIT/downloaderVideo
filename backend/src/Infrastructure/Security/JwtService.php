@@ -2,17 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Infrastructure\Security;
 
 /**
  * Minimal HS256 JWT implementation using PHP's native hash_hmac.
  * No external library required.
  */
-final class JwtService
+final class JwtService implements JwtServiceInterface
 {
     private const TTL = 86400; // 24 hours
-
-    private static string $header;
 
     public function __construct(private readonly string $secret) {}
 
@@ -33,11 +31,6 @@ final class JwtService
         return "{$header}.{$payload}.{$sig}";
     }
 
-    /**
-     * Decodes and validates a JWT. Returns the payload as an object.
-     *
-     * @throws \RuntimeException on invalid or expired token.
-     */
     public function decode(string $token): object
     {
         $parts = explode('.', $token);
@@ -47,7 +40,6 @@ final class JwtService
 
         [$headerB64, $payloadB64, $sigB64] = $parts;
 
-        // Verify signature
         $expected = $this->b64u(hash_hmac('sha256', "{$headerB64}.{$payloadB64}", $this->secret, true));
         if (!hash_equals($expected, $sigB64)) {
             throw new \RuntimeException('Invalid token signature.');
@@ -62,7 +54,6 @@ final class JwtService
         return $payload;
     }
 
-    /** Base64-URL encodes a string (RFC 4648 §5). */
     private function b64u(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
