@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomePage     from '../pages/HomePage.vue'
 import VideoPage    from '../pages/VideoPage.vue'
 import DocumentPage from '../pages/DocumentPage.vue'
+import AdminPage    from '../pages/AdminPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,6 +10,7 @@ const router = createRouter({
     { path: '/',        component: HomePage },
     { path: '/video',   component: VideoPage },
     { path: '/docs',    component: DocumentPage },
+    { path: '/admin',   component: AdminPage },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

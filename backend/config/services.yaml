@@ -12,6 +12,7 @@ parameters:
         - m.youtube.com
         - music.youtube.com
     redis_url: '%env(REDIS_URL)%'
+    jwt_secret: '%env(JWT_SECRET)%'
 
 services:
     _defaults:
@@ -34,6 +35,11 @@ services:
     # ── Job repository ────────────────────────────────────────────────────────
     App\Infrastructure\Repository\JobRepositoryInterface:
         alias: App\Infrastructure\Repository\RedisJobRepository
+
+    # ── JWT ───────────────────────────────────────────────────────────────────
+    App\Service\JwtService:
+        arguments:
+            $secret: '%jwt_secret%'
 
     # ── Downloader ────────────────────────────────────────────────────────────
     App\Service\DownloaderService:

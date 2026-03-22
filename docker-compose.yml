@@ -22,6 +22,9 @@ services:
     volumes:
       - tmp_downloads:/tmp
       - ./backend/public/uploads:/app/public/uploads
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+      - ./backend/migrations:/app/migrations
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -51,6 +54,9 @@ services:
     volumes:
       - tmp_downloads:/tmp
       - ./backend/public/uploads:/app/public/uploads
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+      - ./backend/migrations:/app/migrations
     depends_on:
       - redis
       - postgres
