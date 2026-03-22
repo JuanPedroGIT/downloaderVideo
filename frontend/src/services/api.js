@@ -4,10 +4,13 @@
  * which avoids circular imports between services and stores.
  */
 
-const TOKEN_KEY = 'admin_token'
-
 function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || ''
+  try {
+    const auth = JSON.parse(localStorage.getItem('auth') || '{}')
+    return auth.token || ''
+  } catch {
+    return ''
+  }
 }
 
 function authHeaders() {
@@ -29,8 +32,7 @@ export async function apiFetch(path, options = {}) {
 
   if (res.status === 401) {
     // Token expired / invalid — clear storage and reload to trigger auth guard
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem('admin_username')
+    localStorage.removeItem('auth')
     window.location.href = '/login'
     return null
   }
