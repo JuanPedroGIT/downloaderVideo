@@ -38,7 +38,9 @@ final class JwtAuthListener
         }
 
         try {
-            $this->jwtService->decode(substr($authHeader, 7));
+            $payload = $this->jwtService->decode(substr($authHeader, 7));
+            $event->getRequest()->attributes->set('_jwt_user_id', $payload->sub);
+            $event->getRequest()->attributes->set('_jwt_username', $payload->username);
         } catch (\Throwable) {
             $event->setResponse(new JsonResponse(['error' => 'Unauthorized: invalid or expired token.'], 401));
         }

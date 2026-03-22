@@ -42,11 +42,24 @@
         </div>
         <span class="tool-card__arrow">→</span>
       </RouterLink>
-    </div>
 
-    <footer class="home__footer">
-      <RouterLink to="/admin" class="admin-link">Admin Panel</RouterLink>
-    </footer>
+      <!-- QR Code Manager -->
+      <RouterLink to="/qr" class="tool-card">
+        <div class="tool-card__icon">◻</div>
+        <div class="tool-card__body">
+          <h2 class="tool-card__title">QR Code Manager</h2>
+          <p class="tool-card__desc">
+            Create and manage short QR codes that redirect to any URL.
+          </p>
+          <ul class="tool-card__features">
+            <li>Per-user QR codes</li>
+            <li>Click tracking</li>
+            <li>Enable / disable anytime</li>
+          </ul>
+        </div>
+        <span class="tool-card__arrow">→</span>
+      </RouterLink>
+    </div>
   </main>
 </template>
 
@@ -172,22 +185,5 @@ import { RouterLink } from 'vue-router'
 .tool-card:hover .tool-card__arrow {
   color: var(--grad-start);
   transform: translateX(3px);
-}
-
-.home__footer {
-  margin-top: 1rem;
-}
-
-.admin-link {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.admin-link:hover {
-  opacity: 1;
-  color: var(--text-secondary);
 }
 </style>

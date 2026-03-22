@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -24,9 +26,13 @@ class AdminUser
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: QrCode::class)]
+    private Collection $qrCodes;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->qrCodes   = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -38,4 +44,6 @@ class AdminUser
     public function setPasswordHash(string $hash): self { $this->passwordHash = $hash; return $this; }
 
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+
+    public function getQrCodes(): Collection { return $this->qrCodes; }
 }

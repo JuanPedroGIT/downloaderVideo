@@ -50,9 +50,10 @@ final class AdminController
     // ── QR codes ─────────────────────────────────────────────────────────────
 
     #[Route('/qrcodes', name: 'admin_qr_list', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $qrCodes = $this->em->getRepository(QrCode::class)->findBy([], ['createdAt' => 'DESC']);
+        $user    = $this->getAuthUser($request);
+        $qrCodes = $this->em->getRepository(QrCode::class)->findBy(['user' => $user], ['createdAt' => 'DESC']);
 
         return new JsonResponse(array_map($this->serialize(...), $qrCodes));
     }
@@ -80,7 +81,8 @@ final class AdminController
             return new JsonResponse(['error' => "QR code with id \"{$id}\" already exists."], Response::HTTP_CONFLICT);
         }
 
-        $qr = (new QrCode())->setId($id)->setTargetUrl($targetUrl);
+        $user = $this->getAuthUser($request);
+        $qr   = (new QrCode())->setId($id)->setTargetUrl($targetUrl)->setUser($user);
         $this->em->persist($qr);
         $this->em->flush();
 
@@ -94,6 +96,10 @@ final class AdminController
 
         if (!$qr) {
             return new JsonResponse(['error' => 'QR code not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($qr->getUser()?->getId() !== $this->getAuthUserId($request)) {
+            return new JsonResponse(['error' => 'Forbidden.'], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -116,12 +122,16 @@ final class AdminController
     }
 
     #[Route('/qrcodes/{id}', name: 'admin_qr_delete', methods: ['DELETE'])]
-    public function delete(string $id): JsonResponse
+    public function delete(string $id, Request $request): JsonResponse
     {
         $qr = $this->em->getRepository(QrCode::class)->find($id);
 
         if (!$qr) {
             return new JsonResponse(['error' => 'QR code not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($qr->getUser()?->getId() !== $this->getAuthUserId($request)) {
+            return new JsonResponse(['error' => 'Forbidden.'], Response::HTTP_FORBIDDEN);
         }
 
         $this->em->remove($qr);
@@ -131,6 +141,16 @@ final class AdminController
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function getAuthUserId(Request $request): int
+    {
+        return (int) $request->attributes->get('_jwt_user_id');
+    }
+
+    private function getAuthUser(Request $request): AdminUser
+    {
+        return $this->em->getRepository(AdminUser::class)->find($this->getAuthUserId($request));
+    }
 
     private function serialize(QrCode $qr): array
     {

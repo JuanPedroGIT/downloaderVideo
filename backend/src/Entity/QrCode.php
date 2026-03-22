@@ -26,6 +26,10 @@ class QrCode
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: AdminUser::class, inversedBy: 'qrCodes')]
+    #[ORM\JoinColumn(name: 'user_id', nullable: true, onDelete: 'SET NULL')]
+    private ?AdminUser $user = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -83,4 +87,7 @@ class QrCode
     {
         return $this->createdAt;
     }
+
+    public function getUser(): ?AdminUser { return $this->user; }
+    public function setUser(?AdminUser $user): self { $this->user = $user; return $this; }
 }
