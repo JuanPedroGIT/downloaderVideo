@@ -1,29 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
-import HomePage          from '../pages/HomePage.vue'
-import LoginPage         from '../pages/LoginPage.vue'
-import VideoPage         from '../pages/VideoPage.vue'
-import DocumentPage      from '../pages/DocumentPage.vue'
-import QrPage            from '../pages/QrPage.vue'
-import AdminPage         from '../pages/AdminPage.vue'
-import RegisterPage      from '../pages/RegisterPage.vue'
-import VerifyEmailPage   from '../pages/VerifyEmailPage.vue'
-import ForgotPasswordPage from '../pages/ForgotPasswordPage.vue'
-import ResetPasswordPage from '../pages/ResetPasswordPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login',           component: LoginPage,          meta: { public: true } },
-    { path: '/register',        component: RegisterPage,       meta: { public: true } },
-    { path: '/verify-email',    component: VerifyEmailPage,    meta: { public: true } },
-    { path: '/forgot-password', component: ForgotPasswordPage, meta: { public: true } },
-    { path: '/reset-password',  component: ResetPasswordPage,  meta: { public: true } },
-    { path: '/',       component: HomePage },
-    { path: '/video',  component: VideoPage },
-    { path: '/docs',   component: DocumentPage },
-    { path: '/qr',     component: QrPage },
-    { path: '/admin',  component: AdminPage },
+    { path: '/login',           component: () => import('../pages/LoginPage.vue'),          meta: { public: true } },
+    { path: '/register',        component: () => import('../pages/RegisterPage.vue'),       meta: { public: true } },
+    { path: '/verify-email',    component: () => import('../pages/VerifyEmailPage.vue'),    meta: { public: true } },
+    { path: '/forgot-password', component: () => import('../pages/ForgotPasswordPage.vue'), meta: { public: true } },
+    { path: '/reset-password',  component: () => import('../pages/ResetPasswordPage.vue'),  meta: { public: true } },
+    { path: '/',       component: () => import('../pages/HomePage.vue') },
+    { path: '/video',  component: () => import('../pages/VideoPage.vue') },
+    { path: '/docs',   component: () => import('../pages/DocumentPage.vue') },
+    { path: '/qr',     component: () => import('../pages/QrPage.vue') },
+    { path: '/admin',  component: () => import('../pages/AdminPage.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

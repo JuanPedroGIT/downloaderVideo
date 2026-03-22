@@ -1,0 +1,128 @@
+@use 'variables' as v;
+
+// ─── Gradient text ─────────────────────────────────────────────────────────────
+@mixin gradient-text {
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-mid), var(--grad-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// ─── Auth card layout ─────────────────────────────────────────────────────────
+@mixin auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+@mixin auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+// ─── Form field ───────────────────────────────────────────────────────────────
+@mixin field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  text-align: left;
+
+  span {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  input,
+  select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: v.$radius-sm;
+    padding: 0.55rem 0.75rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: var(--grad-start);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+    }
+  }
+}
+
+// ─── Primary button ───────────────────────────────────────────────────────────
+@mixin btn-primary {
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  color: #fff;
+  border: none;
+  border-radius: v.$radius-sm;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ─── Secondary button ─────────────────────────────────────────────────────────
+@mixin btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: v.$radius-sm;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: var(--grad-start);
+  }
+}
+
+// ─── Alert variants ───────────────────────────────────────────────────────────
+@mixin alert($color, $bg-alpha: 0.12, $border-alpha: 0.3) {
+  background: rgba($color, $bg-alpha);
+  border: 1px solid rgba($color, $border-alpha);
+  color: rgb($color);
+  border-radius: v.$radius-sm;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+// ─── Responsive breakpoint ────────────────────────────────────────────────────
+@mixin mobile {
+  @media (max-width: v.$bp-sm) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (max-width: v.$bp-md) {
+    @content;
+  }
+}

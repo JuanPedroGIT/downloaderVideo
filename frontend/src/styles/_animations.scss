@@ -1,0 +1,32 @@
+// ─── Keyframes ────────────────────────────────────────────────────────────────
+
+@keyframes pulse-bg {
+  0%   { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer-gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

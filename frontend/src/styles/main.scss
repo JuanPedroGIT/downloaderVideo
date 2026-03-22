@@ -1,0 +1,319 @@
+@use 'variables' as v;
+@use 'animations';
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+// ─── CSS Custom Properties (Design Tokens) ────────────────────────────────────
+:root {
+  --bg-deep:        #{v.$color-bg-deep};
+  --bg-card:        #{v.$color-bg-card};
+  --bg-card-hover:  #{v.$color-bg-card-hover};
+  --border:         #{v.$color-border};
+  --border-focus:   #{v.$color-border-focus};
+
+  --grad-start:     #{v.$color-grad-start};
+  --grad-mid:       #{v.$color-grad-mid};
+  --grad-end:       #{v.$color-grad-end};
+
+  --text-primary:   #{v.$color-text-primary};
+  --text-secondary: #{v.$color-text-secondary};
+  --text-muted:     #{v.$color-text-muted};
+
+  --success:        #{v.$color-success};
+  --error:          #{v.$color-error};
+  --warning:        #{v.$color-warning};
+
+  --radius-sm: #{v.$radius-sm};
+  --radius-md: #{v.$radius-md};
+  --radius-lg: #{v.$radius-lg};
+  --radius-xl: #{v.$radius-xl};
+
+  // Legacy alias used in some components
+  --radius: #{v.$radius-sm};
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+  color-scheme: dark;
+}
+
+// ─── Base ─────────────────────────────────────────────────────────────────────
+html, body {
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+// ─── Animated background ──────────────────────────────────────────────────────
+.bg-gradient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 80% at 20% 10%, rgba(139, 92, 246, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(99, 102, 241, 0.10) 0%, transparent 70%),
+    var(--bg-deep);
+  animation: pulse-bg 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 2rem;
+  padding: 2.5rem 2.75rem;
+  background: var(--bg-card);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: slide-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+
+  @media (max-width: v.$bp-sm) {
+    margin: 1rem;
+    padding: 2rem 1.5rem;
+  }
+}
+
+// ─── Logo / Header ───────────────────────────────────────────────────────────
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.logo-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+}
+
+.logo-text h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, var(--grad-start), var(--grad-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-text p {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+// ─── Labels & inputs ──────────────────────────────────────────────────────────
+.field-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.input-url {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+
+  &::placeholder { color: var(--text-muted); }
+
+  &:focus {
+    border-color: var(--border-focus);
+    background: rgba(139, 92, 246, 0.08);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+  }
+
+  &.invalid {
+    border-color: var(--error);
+    box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+  }
+}
+
+// ─── Format grid ─────────────────────────────────────────────────────────────
+.format-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  @media (max-width: v.$bp-sm) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.format-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(236, 72, 153, 0.2));
+    border-color: var(--grad-start);
+    color: var(--text-primary);
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25);
+  }
+
+  .format-icon { font-size: 1.1rem; }
+}
+
+// ─── Download button ──────────────────────────────────────────────────────────
+.btn-download {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-mid), var(--grad-end));
+  background-size: 200% 200%;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  animation: shimmer-gradient 4s linear infinite;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.5);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+// ─── Status bar ───────────────────────────────────────────────────────────────
+.status-bar {
+  margin-top: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  animation: fade-in 0.3s ease;
+  line-height: 1.5;
+
+  &.success {
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    color: var(--success);
+  }
+
+  &.error {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--error);
+  }
+
+  &.loading {
+    background: rgba(139, 92, 246, 0.10);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: #a78bfa;
+  }
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+.field-group  { margin-bottom: 1.4rem; }
+.divider      { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+.progress-container {
+  width: 100%; height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px; margin-top: 1rem; overflow: hidden;
+}
+.progress-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--grad-start), var(--grad-mid));
+  transition: width 0.4s ease;
+}
+.platforms-note {
+  font-size: 0.74rem; color: var(--text-muted); text-align: center; margin-top: 1.4rem;
+  span {
+    background: linear-gradient(90deg, var(--grad-start), var(--grad-end));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    font-weight: 600;
+  }
+}

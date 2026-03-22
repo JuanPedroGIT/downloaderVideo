@@ -1,52 +1,38 @@
-import { ref, computed } from 'vue'
+/**
+ * Thin wrapper around the Pinia auth store.
+ * Keeps backward compatibility with existing components that call useAuth().
+ */
+import { useAuthStore } from '../stores/auth.js'
+import { apiFetch } from '../services/api.js'
 import router from '../router/index.js'
 
-// Module-level refs — shared singleton across all components
-const token    = ref(localStorage.getItem('admin_token') || '')
-const username = ref(localStorage.getItem('admin_username') || '')
-
 export function useAuth() {
-  const isAuthenticated = computed(() => token.value !== '')
+  const store = useAuthStore()
 
   async function login(credentials) {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
-    })
-    const ct = res.headers.get('content-type') || ''
-    if (!ct.includes('application/json')) throw new Error(`Server error (HTTP ${res.status})`)
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Login failed')
-    token.value    = data.token
-    username.value = data.username
-    localStorage.setItem('admin_token', data.token)
-    localStorage.setItem('admin_username', data.username)
-    return data
+    return store.login(credentials)
   }
 
   function logout() {
-    token.value    = ''
-    username.value = ''
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_username')
+    store.logout()
     router.push('/login')
   }
 
   function authHeaders() {
-    return { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' }
+    return store.authHeaders()
   }
 
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(path, { ...options, headers: authHeaders() })
-    if (res.status === 401) { logout(); return null }
-    if (res.status === 204) return null
-    const ct = res.headers.get('content-type') || ''
-    if (!ct.includes('application/json')) throw new Error(`Server error (HTTP ${res.status})`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    return data
+  async function apiFetchWrapped(path, options = {}) {
+    return apiFetch(path, options)
   }
 
-  return { token, username, isAuthenticated, login, logout, authHeaders, apiFetch }
+  return {
+    token:           store.token,
+    username:        store.username,
+    isAuthenticated: store.isAuthenticated,
+    login,
+    logout,
+    authHeaders,
+    apiFetch: apiFetchWrapped,
+  }
 }

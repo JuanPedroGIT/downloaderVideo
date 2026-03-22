@@ -1,0 +1,39 @@
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+// Mirror of the CSS custom properties in main.scss.
+// Use these SCSS vars inside mixins/functions; use CSS vars in component styles.
+
+// Colors
+$color-bg-deep:       #06060f;
+$color-bg-card:       rgba(255, 255, 255, 0.045);
+$color-bg-card-hover: rgba(255, 255, 255, 0.07);
+$color-border:        rgba(255, 255, 255, 0.10);
+$color-border-focus:  rgba(139, 92, 246, 0.6);
+
+$color-grad-start: #8b5cf6;
+$color-grad-mid:   #6366f1;
+$color-grad-end:   #ec4899;
+
+$color-text-primary:   #f1f1f8;
+$color-text-secondary: #9b9bb4;
+$color-text-muted:     #5c5c7a;
+
+$color-success: #34d399;
+$color-error:   #f87171;
+$color-warning: #fbbf24;
+
+// Radius
+$radius-sm: 8px;
+$radius-md: 14px;
+$radius-lg: 22px;
+$radius-xl: 32px;
+
+// Breakpoints
+$bp-sm:  480px;
+$bp-md:  600px;
+$bp-lg:  768px;
+$bp-xl:  1024px;
+
+// Z-index scale
+$z-modal:   100;
+$z-navbar:  50;
+$z-overlay: 90;
