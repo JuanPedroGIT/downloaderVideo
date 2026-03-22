@@ -1,6 +1,6 @@
 # Media Tools
 
-Full-stack web application with three tools: YouTube video downloader, document management (DOCX→PDF + PDF merge), and a QR code admin panel.
+Full-stack web application with three tools: YouTube video downloader, document management (DOCX→PDF + PDF merge), and a QR code manager with public registration and email verification.
 
 ## Stack
 
@@ -9,7 +9,8 @@ Full-stack web application with three tools: YouTube video downloader, document 
 | Backend | Symfony 7, PHP 8.3, Doctrine ORM, Symfony Messenger |
 | Queue | Redis + Symfony Redis Messenger Transport |
 | Database | PostgreSQL 16 |
-| Frontend | Vue 3, Vite, Vue Router 4, PWA (vite-plugin-pwa) |
+| Frontend | Vue 3, Vite, Vue Router 4, Pinia, SCSS, PWA (vite-plugin-pwa) |
+| Email | Brevo REST API (transactional email) |
 | Proxy | Nginx (envsubst for configurable upstream) |
 | Deployment | Docker Compose (local) / Railway + Nixpacks (production) |
 
@@ -29,64 +30,117 @@ Full-stack web application with three tools: YouTube video downloader, document 
 - PDF merge via FPDI (PDFs normalized to v1.4 with Ghostscript)
 - Download result as a single merged PDF
 
-### QR Code Admin Panel (`/admin`)
-- Login with username + password stored in PostgreSQL
+### QR Code Manager (`/qr`)
+- Public registration with email verification (Brevo)
+- Password reset via email
 - JWT authentication (HS256, 24h expiry — native PHP, no external library)
 - Full CRUD: create, edit, activate/deactivate, delete QR codes
-- View QR image inline (SVG modal)
+- View QR image inline (SVG modal), click tracking
 - QR codes redirect via `/q/{id}` and increment click counter
 
 ---
 
 ## Architecture
 
-### Backend (DDD + CQRS)
+### Backend — Hexagonal / DDD
 
 ```
 backend/src/
 ├── Controller/
+│   ├── AuthController.php          # /api/auth/* (register, login, verify, reset)
+│   ├── AdminController.php         # /api/admin/* QR CRUD (JWT protected)
 │   ├── DownloadController.php
 │   ├── DocumentController.php
-│   ├── AdminController.php        # QR CRUD + login
-│   └── QrRedirectController.php   # /q/{id} redirect + SVG generation
-├── Domain/Download/
-│   ├── Exception/                 # InvalidVideoUrlException, UnsupportedFormatException
-│   └── ValueObject/               # VideoUrl, DownloadFormat, JobId
-├── Entity/
-│   ├── QrCode.php
-│   └── AdminUser.php
-├── EventListener/
-│   └── JwtAuthListener.php        # Guards /api/admin/* routes
+│   └── QrRedirectController.php    # /q/{id} redirect + SVG generation
+│
+├── Domain/
+│   ├── Auth/
+│   │   ├── Exception/              # InvalidCredentialsException, EmailNotVerifiedException…
+│   │   └── Repository/             # AdminUserRepositoryInterface
+│   └── QrCode/
+│       ├── Exception/              # QrCodeNotFoundException, QrCodeForbiddenException…
+│       └── Repository/             # QrCodeRepositoryInterface
+│
+├── Application/
+│   ├── Auth/
+│   │   ├── Login/                  # LoginCommand + LoginHandler + LoginResult
+│   │   ├── Register/               # RegisterUserCommand + RegisterUserHandler
+│   │   ├── VerifyEmail/            # VerifyEmailCommand + VerifyEmailHandler
+│   │   ├── RequestPasswordReset/   # RequestPasswordResetCommand + Handler
+│   │   └── ResetPassword/          # ResetPasswordCommand + ResetPasswordHandler
+│   └── QrCode/
+│       ├── QrCodeDto.php           # readonly DTO with fromEntity()
+│       ├── List/                   # ListQrCodesQuery + Handler
+│       ├── Create/                 # CreateQrCodeCommand + Handler
+│       ├── Update/                 # UpdateQrCodeCommand + Handler
+│       └── Delete/                 # DeleteQrCodeCommand + Handler
+│
 ├── Infrastructure/
-│   ├── FileSystem/TempWorkspace.php
-│   ├── Process/YtDlpRunner.php
-│   └── Repository/                # JobRepositoryInterface / RedisJobRepository
-├── Message/                       # Symfony Messenger commands
-├── MessageHandler/                # Async download handler
+│   ├── Email/
+│   │   ├── MailerInterface.php
+│   │   └── BrevoMailer.php         # Brevo REST API via HttpClient
+│   ├── Repository/
+│   │   ├── DoctrineAdminUserRepository.php
+│   │   └── DoctrineQrCodeRepository.php
+│   └── Security/
+│       ├── JwtServiceInterface.php
+│       └── JwtService.php          # HS256 JWT (hash_hmac, no library)
+│
+├── Entity/
+│   ├── AdminUser.php               # email, isVerified, verification/reset tokens
+│   └── QrCode.php
+│
+├── EventListener/
+│   ├── JwtAuthListener.php         # Guards /api/admin/* routes
+│   └── ApiExceptionListener.php    # Maps domain exceptions → HTTP status codes
+│
 ├── Service/
 │   ├── DownloaderService.php
-│   ├── DocumentService.php
-│   └── JwtService.php             # HS256 JWT (hash_hmac, no library)
+│   └── DocumentService.php
+│
 └── Command/
     └── CreateAdminUserCommand.php  # app:admin:create
 ```
 
-### Frontend (Vue 3 SPA)
+### Frontend — Vue 3 SPA
 
 ```
 frontend/src/
 ├── pages/
-│   ├── HomePage.vue       # Landing with links to tools
-│   ├── VideoPage.vue      # Video downloader
-│   ├── DocumentPage.vue   # Document tools
-│   └── AdminPage.vue      # QR admin panel (login + CRUD + QR modal)
+│   ├── HomePage.vue
+│   ├── VideoPage.vue
+│   ├── DocumentPage.vue
+│   ├── QrPage.vue                  # Orchestrates QrTable + QrForm + QrDisplayModal
+│   ├── LoginPage.vue
+│   ├── RegisterPage.vue
+│   ├── VerifyEmailPage.vue
+│   ├── ForgotPasswordPage.vue
+│   └── ResetPasswordPage.vue
 ├── components/
+│   ├── ui/                         # BaseButton, BaseInput, BaseModal, BaseAlert, BaseSpinner
+│   ├── layout/                     # AuthCard (shared layout for auth pages)
+│   ├── features/qr/                # QrTable, QrForm, QrDisplayModal
+│   ├── AppNavbar.vue
 │   ├── DocumentManager.vue
 │   ├── FormatSelector.vue
 │   ├── ProgressBar.vue
 │   └── StatusMessage.vue
-├── composables/useDownload.js
-└── router/index.js        # /, /video, /docs, /admin
+├── composables/
+│   ├── useAuth.js                  # Thin wrapper around Pinia auth store
+│   ├── useQrCode.js                # QR CRUD state (fetchAll, create, update, remove)
+│   └── useDownload.js
+├── stores/
+│   └── auth.js                     # Pinia store with localStorage persistence
+├── services/
+│   ├── api.js                      # apiFetch / publicFetch base wrappers
+│   ├── authService.js              # login, register, verifyEmail, requestReset, resetPassword
+│   └── qrService.js                # list, create, update, delete, getSvg
+├── styles/
+│   ├── _variables.scss             # Design tokens (colors, radii, breakpoints)
+│   ├── _mixins.scss                # Reusable SCSS mixins
+│   ├── _animations.scss            # Keyframes
+│   └── main.scss                   # Global styles
+└── router/index.js                 # Lazy-loaded routes, auth guard
 ```
 
 ### Database Migrations
@@ -94,7 +148,33 @@ frontend/src/
 ```
 backend/migrations/
 ├── Version20260321000000.php   # Creates qr_code table
-└── Version20260322000001.php   # Creates admin_user table
+├── Version20260322000001.php   # Creates admin_user table
+├── Version20260323000000.php   # Adds QR columns (absolute_url…)
+└── Version20260323000001.php   # Adds auth columns to admin_user
+                                #   (email, is_verified, verification_token,
+                                #    verification_token_expires, reset_token,
+                                #    reset_token_expires)
+```
+
+### Tests
+
+```
+backend/tests/Unit/
+├── Application/Auth/
+│   ├── LoginHandlerTest.php
+│   ├── RegisterUserHandlerTest.php
+│   ├── VerifyEmailHandlerTest.php
+│   └── ResetPasswordHandlerTest.php
+├── Application/QrCode/
+│   ├── CreateQrCodeHandlerTest.php
+│   └── UpdateQrCodeHandlerTest.php
+└── Infrastructure/Security/
+    └── JwtServiceTest.php
+```
+
+Run with:
+```bash
+make test
 ```
 
 ---
@@ -119,7 +199,14 @@ make up
 docker exec -it yt-downloader-backend php bin/console app:admin:create
 ```
 
-Then go to http://localhost:5173/admin.
+### Post-migration (existing users without email)
+
+After running migrations, mark existing CLI-created users as verified so they can still log in:
+
+```bash
+docker exec -it yt-downloader-postgres psql -U postgres -d media_tools \
+  -c "UPDATE admin_user SET is_verified = TRUE WHERE email IS NULL;"
+```
 
 ---
 
@@ -134,7 +221,7 @@ make shell             # Shell into backend container
 make migrate           # Run pending migrations
 make migration-diff    # Generate migration from entity changes
 make cache-clear       # Clear Symfony cache
-make test              # Run all tests (PHP + JS)
+make test              # Run all tests
 make test-unit         # PHP unit tests only
 make test-frontend     # Vitest frontend tests
 ```
@@ -152,7 +239,8 @@ make test-frontend     # Vitest frontend tests
 | `DATABASE_URL` | PostgreSQL DSN |
 | `REDIS_URL` | Redis connection URL |
 | `MESSENGER_TRANSPORT_DSN` | Symfony Messenger transport DSN |
-| `DEFAULT_URI` | Base URL used for QR generation |
+| `DEFAULT_URI` | Base URL of the frontend (used in verification/reset email links) |
+| `BREVO_API_KEY` | Brevo REST API key (`xkeysib-…`) for transactional emails |
 
 ### Frontend
 
@@ -165,35 +253,32 @@ make test-frontend     # Vitest frontend tests
 ## Railway Deployment
 
 ### Backend service
+
 ```
 APP_SECRET=<random 32 char string>
 JWT_SECRET=<random secret>
 DATABASE_URL=<postgresql DSN from Railway>
 REDIS_URL=<redis DSN from Railway>
 MESSENGER_TRANSPORT_DSN=<redis DSN from Railway>
-RAILWAY_PUBLIC_DOMAIN=<your-backend.railway.app>
-```
-
-Create the first admin user via Railway CLI:
-```bash
-# Install CLI if you don't have it
-npm install -g @railway/cli
-
-# Login and link project
-railway login
-railway link
-#para entra en la terminal
-railway ssh
-# Open shell in backend service
-railway shell --service backend
-
-# Then inside the shell:
-php bin/console app:admin:create
+DEFAULT_URI=https://<your-frontend.railway.app>
+BREVO_API_KEY=<xkeysib-…>
 ```
 
 ### Frontend service
+
 ```
 BACKEND_UPSTREAM=https://<your-backend.railway.app>
+```
+
+### Create first admin user via Railway CLI
+
+```bash
+npm install -g @railway/cli
+railway login
+railway link
+railway ssh
+# Inside the shell:
+php bin/console app:admin:create
 ```
 
 ---
@@ -211,16 +296,20 @@ BACKEND_UPSTREAM=https://<your-backend.railway.app>
 | `POST` | `/api/documents/merge` | Merge/convert documents |
 | `GET` | `/q/{id}` | QR redirect (increments click counter) |
 | `GET` | `/api/qr/generate/{id}` | Generate QR SVG image |
+| `POST` | `/api/auth/register` | Register new user (sends verification email) |
+| `POST` | `/api/auth/login` | Login, returns JWT token |
+| `GET` | `/api/auth/verify-email?token=` | Activate account |
+| `POST` | `/api/auth/request-reset` | Send password reset email |
+| `POST` | `/api/auth/reset-password` | Set new password with reset token |
 
 ### Admin endpoints (JWT required)
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/admin/login` | Login, returns JWT token |
-| `GET` | `/api/admin/qrcodes` | List all QR codes |
-| `POST` | `/api/admin/qrcodes` | Create a QR code |
-| `PATCH` | `/api/admin/qrcodes/{id}` | Update targetUrl or isActive |
-| `DELETE` | `/api/admin/qrcodes/{id}` | Delete a QR code |
+| `GET` | `/api/admin/qr` | List all QR codes for the authenticated user |
+| `POST` | `/api/admin/qr` | Create a QR code |
+| `PATCH` | `/api/admin/qr/{id}` | Update targetUrl or isActive |
+| `DELETE` | `/api/admin/qr/{id}` | Delete a QR code |
 
 ### Download formats
 
@@ -240,7 +329,10 @@ BACKEND_UPSTREAM=https://<your-backend.railway.app>
 - Format validated against config
 - `yt-dlp` invoked via `proc_open` with argument array (no shell injection)
 - JWT signed with HS256 using `hash_hmac` — no external library, no security advisories
-- Admin passwords stored as bcrypt hashes (`password_hash`)
+- Passwords stored as bcrypt hashes (`password_hash`)
+- Verification tokens: 64-char hex, expire in 24h
+- Reset tokens: 64-char hex, expire in 1h
+- Password reset always returns 200 regardless of email existence (anti-enumeration)
 - Temporary files deleted after response is sent
 
 ---
