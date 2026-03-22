@@ -11,7 +11,9 @@ down:
 
 build:
 	docker compose up --build -d
-
+build-front:
+	docker compose build frontend && docker compose up -d frontend
+	
 rebuild:
 	docker compose down && docker compose up --build -d
 
