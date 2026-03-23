@@ -18,6 +18,8 @@ RUN npm run build
 # ── Stage 2: Serve with Nginx ─────────────────────────────────────────────────
 FROM nginx:1.25-alpine AS runtime
 
+ARG CACHEBUST=1
+
 # Remove default config
 RUN rm /etc/nginx/conf.d/default.conf
 
