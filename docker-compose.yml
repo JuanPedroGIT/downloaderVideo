@@ -54,7 +54,7 @@ services:
     environment:
       # - PORT=80
       # El frontend habla con la API a través del Nginx de Infra
-      - BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
+      BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
     networks:
       - shared-network
     depends_on:
