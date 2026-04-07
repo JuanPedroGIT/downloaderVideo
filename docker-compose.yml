@@ -1,7 +1,6 @@
-
 services:
-  # ── Backend (Symfony 7 API) ────────────────────────────────────────────────
-  backend:
+  # --- Backend (Symfony 7 API) ---
+  yt-downloader-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -9,39 +8,27 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: dev
-      APP_SECRET: "${APP_SECRET:-supersecretchangeme}"
-      CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$"
-      JWT_SECRET: "${JWT_SECRET:-change_me_to_a_random_jwt_secret_key}"
-      BREVO_API_KEY: "${BREVO_API_KEY:-}"
-      DEFAULT_URI: "${DEFAULT_URI:-http://localhost:5173}"
-      MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
-      REDIS_URL: "redis://redis:6379"
-      DATABASE_URL: "postgresql://postgres:password@postgres:5432/app?serverVersion=16&charset=utf8"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "8080:8080"
+      APP_SECRET: "${APP_SECRET}"
+      # CORS: Permitimos el dominio real y localhost para pruebas
+      CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1|.*\\.media-tools\\.me|media-tools\\.me)(:[0-9]+)?$"
+      # Conexión al Redis de Infra
+      MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
+      REDIS_URL: "redis://shared-redis:6379"
+      # Conexión al Postgres de Infra
+      DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
+    networks:
+      - shared-network
     volumes:
       - tmp_downloads:/tmp
       - ./backend/public/uploads:/app/public/uploads
-      - ./backend/src:/app/src
-      - ./backend/config:/app/config
-      - ./backend/migrations:/app/migrations
-      - ./backend/tests:/app/tests
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
     depends_on:
-      - redis
       - postgres
-    networks:
-      - app-network
 
-  # ── Background Worker (Symfony Messenger) ──────────────────────────────────
-  worker:
+  # --- Worker (Procesador de colas en segundo plano) ---
+  yt-downloader-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -50,74 +37,43 @@ services:
     command: ["php", "bin/console", "messenger:consume", "async", "-vv"]
     environment:
       APP_ENV: dev
-      APP_SECRET: "${APP_SECRET:-supersecretchangeme}"
-      JWT_SECRET: "${JWT_SECRET:-change_me_to_a_random_jwt_secret_key}"
-      MESSENGER_TRANSPORT_DSN: "redis://redis:6379/0"
-      REDIS_URL: "redis://redis:6379"
-      DATABASE_URL: "postgresql://postgres:password@postgres:5432/app?serverVersion=16&charset=utf8"
+      DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
+      MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
     volumes:
       - tmp_downloads:/tmp
-      - ./backend/public/uploads:/app/public/uploads
-      - ./backend/src:/app/src
-      - ./backend/config:/app/config
-      - ./backend/migrations:/app/migrations
-    depends_on:
-      - redis
-      - postgres
     networks:
-      - app-network
+      - shared-network
 
-  # ── Redis (Queue & State Store) ───────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: yt-downloader-redis
-    restart: unless-stopped
-    networks:
-      - app-network
-
-  # ── PostgreSQL (Database for QR Codes) ────────────────────────────────────
-  postgres:
-    image: postgres:16-alpine
-    container_name: yt-downloader-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: app
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - app-network
-
-  # ── Frontend (Vue 3 + Nginx) ───────────────────────────────────────────────
-  frontend:
+  # --- Frontend (Vue 3) ---
+  yt-downloader-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      # VITE_API_URL is left empty – Nginx proxies /download & /health to the backend
-      # so the Vue app uses relative URLs (no CORS issues, no hard-coded addresses)
     container_name: yt-downloader-frontend
     restart: unless-stopped
     environment:
-      BACKEND_UPSTREAM: "http://backend:8080"
-    ports:
-      - "5173:80"
-    depends_on:
-      backend:
-        condition: service_healthy
+      - PORT=80
+      # El frontend habla con la API a través del Nginx de Infra
+      - BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
     networks:
-      - app-network
+      - shared-network
+    depends_on:
+      yt-downloader-backend:
+        condition: service_healthy
 
-# ── Shared volumes ─────────────────────────────────────────────────────────────
+  # Placeholder para mantener compatibilidad de red
+  postgres:
+    image: alpine:latest
+    command: echo "Using shared PostgreSQL"
+    networks:
+      - shared-network
+    deploy:
+      replicas: 0
+
 volumes:
   tmp_downloads:
-    driver: local
-  pgdata:
-    driver: local
 
-# ── Networks ───────────────────────────────────────────────────────────────────
 networks:
-  app-network:
-    driver: bridge
+  shared-network:
+    name: shared-network
+    external: true
