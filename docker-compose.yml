@@ -9,25 +9,22 @@ services:
     environment:
       APP_ENV: dev
       APP_SECRET: "${APP_SECRET}"
-      # CORS: Permitimos el dominio real y localhost para pruebas
       CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1|.*\\.media-tools\\.me|media-tools\\.me)(:[0-9]+)?$"
-      # Conexión al Redis de Infra
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
-      # Conexión al Postgres de Infra
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
+      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003 idekey=VSCODE start_with_request=yes log=/tmp/xdebug.log"
+      PHP_IDE_CONFIG: "serverName=yt-downloader-backend"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
-      - ./backend/public/uploads:/app/public/uploads
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-    depends_on:
-      - postgres
+      - ./backend:/app
+    # Quitamos el depends_on para evitar bloqueos en local
 
-  # --- Worker (Procesador de colas en segundo plano) ---
+  # --- Worker ---
   yt-downloader-worker:
     build:
       context: ./backend
@@ -52,23 +49,9 @@ services:
     container_name: yt-downloader-frontend
     restart: unless-stopped
     environment:
-      # - PORT=80
-      # El frontend habla con la API a través del Nginx de Infra
       BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
     networks:
       - shared-network
-    depends_on:
-      yt-downloader-backend:
-        condition: service_healthy
-
-  # Placeholder para mantener compatibilidad de red
-  postgres:
-    image: alpine:latest
-    command: echo "Using shared PostgreSQL"
-    networks:
-      - shared-network
-    deploy:
-      replicas: 0
 
 volumes:
   tmp_downloads:
