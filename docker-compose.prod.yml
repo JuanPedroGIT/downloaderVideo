@@ -3,47 +3,43 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev
+      target: prod
     container_name: yt-downloader-backend
     restart: unless-stopped
     environment:
-      APP_ENV: dev
+      APP_ENV: prod
+      APP_DEBUG: "0"
       APP_SECRET: "${APP_SECRET}"
-      CORS_ALLOW_ORIGIN: "^https?://(localhost|127\\.0\\.0\\.1|.*\\.media-tools\\.me|media-tools\\.me)(:[0-9]+)?$"
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES}"
+      TRUSTED_HEADERS: "${TRUSTED_HEADERS}"
+      CORS_ALLOW_ORIGIN: "^https?://(.*\\.media-tools\\.me|media-tools\\.me)$"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
-      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003 idekey=VSCODE start_with_request=yes log=/tmp/xdebug.log"
-      PHP_IDE_CONFIG: "serverName=yt-downloader-backend"
-      TRUSTED_PROXIES: "${TRUSTED_PROXIES}"
-      TRUSTED_HEADERS: "${TRUSTED_HEADERS}"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
-      - ./backend:/app
 
   yt-downloader-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev
+      target: prod
     container_name: yt-downloader-worker
     restart: unless-stopped
     healthcheck:
       disable: true
     command: ["php", "bin/console", "messenger:consume", "async", "-vv", "--memory-limit=128M"]
     environment:
-      APP_ENV: dev
+      APP_ENV: prod
+      APP_DEBUG: "0"
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
     networks:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
-      - ./backend:/app
 
   yt-downloader-frontend:
     build:
