@@ -6,16 +6,14 @@ services:
       target: prod
     container_name: yt-downloader-backend
     restart: unless-stopped
+    env_file: .env
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
-      APP_SECRET: "${APP_SECRET}"
-      TRUSTED_PROXIES: "${TRUSTED_PROXIES}"
-      TRUSTED_HEADERS: "${TRUSTED_HEADERS}"
       CORS_ALLOW_ORIGIN: "^https?://(.*\\.media-tools\\.me|media-tools\\.me)$"
+      DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
-      DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
     networks:
       - shared-network
     volumes:
@@ -31,6 +29,7 @@ services:
     healthcheck:
       disable: true
     command: ["php", "bin/console", "messenger:consume", "async", "-vv", "--memory-limit=128M"]
+    env_file: .env
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
