@@ -29,18 +29,24 @@ final class YtDlpRunner
 
         // Prefer a mounted cookies file (YT_COOKIES_PATH), fallback to inline
         // YT_COOKIES for environments where mounting is not possible.
+        // yt-dlp reescribe el fichero de cookies al terminar, así que se copia
+        // a un sitio escribible (el workspace) aunque el montaje sea ro.
         $cookiesPath = $_ENV['YT_COOKIES_PATH'] ?? getenv('YT_COOKIES_PATH') ?: null;
         if ($cookiesPath && is_file($cookiesPath)) {
-            $commonArgs[] = '--cookies';
-            $commonArgs[] = $cookiesPath;
+            $cookiesSource = $cookiesPath;
         } else {
-            $cookiesRaw = $_ENV['YT_COOKIES'] ?? getenv('YT_COOKIES') ?: null;
-            if ($cookiesRaw) {
-                $cookiesFile = $cwd . DIRECTORY_SEPARATOR . 'cookies.txt';
-                file_put_contents($cookiesFile, $cookiesRaw);
-                $commonArgs[] = '--cookies';
-                $commonArgs[] = $cookiesFile;
+            $cookiesSource = $_ENV['YT_COOKIES'] ?? getenv('YT_COOKIES') ?: null;
+        }
+
+        if ($cookiesSource) {
+            $cookiesFile = $cwd . DIRECTORY_SEPARATOR . 'cookies.txt';
+            if ($cookiesPath && is_file($cookiesPath)) {
+                copy($cookiesPath, $cookiesFile);
+            } else {
+                file_put_contents($cookiesFile, $cookiesSource);
             }
+            $commonArgs[] = '--cookies';
+            $commonArgs[] = $cookiesFile;
         }
 
         $command     = array_merge($commonArgs, $extraArgs);
