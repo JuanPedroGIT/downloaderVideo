@@ -49,7 +49,10 @@ class DownloaderService
             $args = $provider->buildArgs($videoUrl->value(), $downloadFormat->value, $this->formats);
             $this->ytDlpRunner->run($workspace->dlDir(), $workspace->outputTemplate(), $args, $progressCallback);
 
-            $files = glob($workspace->dlDir() . DIRECTORY_SEPARATOR . '*') ?: [];
+            $files = array_values(array_filter(
+                glob($workspace->dlDir() . DIRECTORY_SEPARATOR . '*') ?: [],
+                static fn (string $path): bool => basename($path) !== 'cookies.txt'
+            ));
             if (empty($files)) {
                 throw new RuntimeException('yt-dlp did not produce any output file.');
             }
