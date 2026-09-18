@@ -23,6 +23,9 @@ class DownloadFormatTest extends TestCase
     {
         return [
             ['mp4'],
+            ['mp4-1080'],
+            ['mp4-720'],
+            ['mp4-480'],
             ['mp3'],
             ['webm'],
             ['audio'],

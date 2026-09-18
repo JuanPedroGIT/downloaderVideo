@@ -8,11 +8,14 @@ use App\Domain\Download\Exception\UnsupportedFormatException;
 
 enum DownloadFormat: string
 {
-    case Mp4   = 'mp4';
-    case Mp3   = 'mp3';
-    case WebM  = 'webm';
-    case Audio = 'audio';
-    case Video = 'video';
+    case Mp4      = 'mp4';
+    case Mp41080  = 'mp4-1080';
+    case Mp4720   = 'mp4-720';
+    case Mp4480   = 'mp4-480';
+    case Mp3      = 'mp3';
+    case WebM     = 'webm';
+    case Audio    = 'audio';
+    case Video    = 'video';
 
     public static function fromString(string $format): self
     {

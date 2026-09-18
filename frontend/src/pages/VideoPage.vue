@@ -77,7 +77,7 @@ import StatusMessage    from '../components/StatusMessage.vue'
 const auth = useAuthStore()
 
 const url            = ref('')
-const selectedFormat = ref('mp4')
+const selectedFormat = ref('mp4-720')
 
 const { isLoading, status, statusType, progress, urlError, startDownload, validateUrl, clearStatus } = useDownload()
 </script>
