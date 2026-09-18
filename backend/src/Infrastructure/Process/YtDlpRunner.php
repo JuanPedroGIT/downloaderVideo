@@ -23,7 +23,7 @@ final class YtDlpRunner
             '--js-runtimes', 'node',
             '--yes-playlist',
             '--newline',
-            '--extractor-args', 'youtube:player-client=android,web,mweb',
+            '--extractor-args', 'youtube:player-client=web,web_embedded,ios',
             '-o', $outputTemplate,
         ];
 
