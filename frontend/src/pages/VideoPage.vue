@@ -16,6 +16,12 @@
 
     <hr class="divider" />
 
+    <div v-if="!auth.isAuthenticated" class="auth-required">
+      <p>🔒 Login required to use the video downloader.</p>
+      <RouterLink to="/login" class="btn-download auth-required__link">Login</RouterLink>
+    </div>
+
+    <template v-else>
     <div class="field-group">
       <label class="field-label" for="url-input">YouTube URL</label>
       <input
@@ -51,16 +57,20 @@
     <p class="platforms-note">
       Currently supports <span>YouTube</span> · Vimeo &amp; TikTok coming soon
     </p>
+    </template>
   </main>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
 import { useDownload }  from '../composables/useDownload.js'
 import FormatSelector   from '../components/FormatSelector.vue'
 import ProgressBar      from '../components/ProgressBar.vue'
 import StatusMessage    from '../components/StatusMessage.vue'
+
+const auth = useAuthStore()
 
 const url            = ref('')
 const selectedFormat = ref('mp4')
@@ -71,6 +81,18 @@ const { isLoading, status, statusType, progress, urlError, startDownload, valida
 <style scoped>
 .page-header {
   margin-bottom: 1rem;
+}
+
+.auth-required {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-secondary);
+}
+
+.auth-required__link {
+  display: inline-block;
+  margin-top: 1rem;
+  text-decoration: none;
 }
 
 .btn-back {

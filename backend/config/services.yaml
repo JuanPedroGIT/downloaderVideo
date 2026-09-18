@@ -15,6 +15,7 @@ parameters:
     jwt_secret: '%env(JWT_SECRET)%'
     brevo_api_key: '%env(BREVO_API_KEY)%'
     default_uri: '%env(DEFAULT_URI)%'
+    downloader.allowed_usernames: '%env(csv:DOWNLOAD_ALLOWED_USERNAMES)%'
 
 services:
     _defaults:
@@ -33,6 +34,11 @@ services:
     Predis\Client:
         arguments:
             $parameters: '%redis_url%'
+
+    # ── JWT auth listener (usuarios con permiso de descarga) ──────────────────
+    App\EventListener\JwtAuthListener:
+        arguments:
+            $downloadAllowedUsernames: '%downloader.allowed_usernames%'
 
     # ── Job repository ────────────────────────────────────────────────────────
     App\Infrastructure\Repository\JobRepositoryInterface:

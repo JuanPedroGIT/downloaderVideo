@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
 
 const ALLOWED_HOSTS = [
   'youtube.com',
@@ -67,12 +68,18 @@ export function useDownload() {
 
     try {
       const apiBase = import.meta.env.VITE_API_URL || ''
+      const auth    = useAuthStore()
       const res = await fetch(`${apiBase}/download`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+        },
         body:    JSON.stringify({ url: url.trim(), format }),
       })
 
+      if (res.status === 401) throw new Error('Login required to use this tool.')
+      if (res.status === 403) throw new Error('This tool is restricted to the site owner.')
       if (!res.ok) throw new Error('Failed to queue job.')
 
       const { jobId } = await res.json()
