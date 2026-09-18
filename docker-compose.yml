@@ -1,10 +1,10 @@
 services:
-  yt-downloader-backend:
+  mediatools-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: dev
-    container_name: yt-downloader-backend
+    container_name: mediatools-backend
     restart: unless-stopped
     env_file: .env
     environment:
@@ -15,7 +15,7 @@ services:
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
       XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003 idekey=VSCODE start_with_request=yes log=/tmp/xdebug.log"
-      PHP_IDE_CONFIG: "serverName=yt-downloader-backend"
+      PHP_IDE_CONFIG: "serverName=mediatools-backend"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -24,12 +24,12 @@ services:
       - tmp_downloads:/tmp
       - ./backend:/app
 
-  yt-downloader-worker:
+  mediatools-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: dev
-    container_name: yt-downloader-worker
+    container_name: mediatools-worker
     restart: unless-stopped
     healthcheck:
       disable: true
@@ -45,14 +45,14 @@ services:
       - tmp_downloads:/tmp
       - ./backend:/app
 
-  yt-downloader-frontend:
+  mediatools-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: yt-downloader-frontend
+    container_name: mediatools-frontend
     restart: unless-stopped
     environment:
-      BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
+      BACKEND_UPSTREAM: "http://mediatools-backend:8080"
     networks:
       - shared-network
 

@@ -196,7 +196,7 @@ make up
 ### Create first admin user
 
 ```bash
-docker exec -it yt-downloader-backend php bin/console app:admin:create
+docker exec -it mediatools-backend php bin/console app:admin:create
 ```
 
 ### Post-migration (existing users without email)
@@ -204,7 +204,7 @@ docker exec -it yt-downloader-backend php bin/console app:admin:create
 After running migrations, mark existing CLI-created users as verified so they can still log in:
 
 ```bash
-docker exec -it yt-downloader-postgres psql -U postgres -d media_tools \
+docker exec -it shared-postgres-db psql -U postgres -d mediatools \
   -c "UPDATE admin_user SET is_verified = TRUE WHERE email IS NULL;"
 ```
 

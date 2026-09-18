@@ -1,5 +1,5 @@
-BACKEND  = yt-downloader-backend
-FRONTEND = yt-downloader-frontend
+BACKEND  = mediatools-backend
+FRONTEND = mediatools-frontend
 
 # ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -72,21 +72,34 @@ cache-clear:
 sf:
 	docker exec $(BACKEND) php bin/console $(cmd)
 
+# ── Producción ───────────────────────────────────────────────────────────────
+
+# Crea la BBDD mediatools en el Postgres compartido (idempotente, seguro repetirlo)
+# POSTGRES_PASSWORD puede venir del .env del proyecto o del entorno del shell
+init-db:
+	docker run --rm --network shared-network --env-file .env -e POSTGRES_PASSWORD \
+		-v $(PWD)/init-db.sh:/init-db.sh:ro \
+		postgres:16-alpine sh /init-db.sh
+
+deploy-prod: init-db
+	docker compose -f docker-compose.prod.yml up --build -d
+
 # ── Utilidades ───────────────────────────────────────────────────────────────
 
 shell:
 	docker exec -it $(BACKEND) bash
 
 shell-worker:
-	docker exec -it yt-downloader-worker bash
+	docker exec -it mediatools-worker bash
 
 shell-db:
-	docker exec -it yt-downloader-postgres psql -U postgres -d app
+	docker exec -it shared-postgres-db psql -U postgres -d mediatools
 
 redis-cli:
-	docker exec -it yt-downloader-redis redis-cli
+	docker exec -it shared-redis redis-cli
 
 .PHONY: up down build rebuild logs install update vendor-sync \
         test test-unit test-integration test-frontend test-coverage \
         migrate migration-diff migration-status cache-clear sf \
+        init-db deploy-prod \
         shell shell-worker shell-db redis-cli

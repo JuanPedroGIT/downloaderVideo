@@ -1,6 +1,6 @@
 {
-    "name": "app/youtube-downloader-backend",
-    "description": "YouTube Downloader API – Symfony 7",
+    "name": "app/mediatools-backend",
+    "description": "Media Tools API – Symfony 7",
     "type": "project",
     "license": "MIT",
     "require": {

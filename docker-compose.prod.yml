@@ -1,10 +1,10 @@
 services:
-  yt-downloader-backend:
+  mediatools-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: prod
-    container_name: yt-downloader-backend
+    container_name: mediatools-backend
     restart: unless-stopped
     env_file: .env
     environment:
@@ -19,12 +19,12 @@ services:
     volumes:
       - tmp_downloads:/tmp
 
-  yt-downloader-worker:
+  mediatools-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: prod
-    container_name: yt-downloader-worker
+    container_name: mediatools-worker
     restart: unless-stopped
     healthcheck:
       disable: true
@@ -40,14 +40,14 @@ services:
     volumes:
       - tmp_downloads:/tmp
 
-  yt-downloader-frontend:
+  mediatools-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: yt-downloader-frontend
+    container_name: mediatools-frontend
     restart: unless-stopped
     environment:
-      BACKEND_UPSTREAM: "http://yt-downloader-backend:8080"
+      BACKEND_UPSTREAM: "http://mediatools-backend:8080"
     networks:
       - shared-network
 

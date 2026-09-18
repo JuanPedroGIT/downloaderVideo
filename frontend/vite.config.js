@@ -19,9 +19,9 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'YT Downloader',
-        short_name: 'YTDownloader',
-        description: 'Fast YouTube Video & Audio Downloader',
+        name: 'Media Tools',
+        short_name: 'MediaTools',
+        description: 'Video downloader, document tools & QR manager',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
