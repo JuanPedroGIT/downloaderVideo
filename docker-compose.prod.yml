@@ -14,11 +14,13 @@ services:
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
+      YT_COOKIES_PATH: "/app/cookies.txt"
     networks:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
       - ./.env:/app/.env:ro
+      - ./cookies.txt:/app/cookies.txt:ro
 
   mediatools-worker:
     build:
@@ -37,11 +39,13 @@ services:
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
       REDIS_URL: "redis://shared-redis:6379"
+      YT_COOKIES_PATH: "/app/cookies.txt"
     networks:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
       - ./.env:/app/.env:ro
+      - ./cookies.txt:/app/cookies.txt:ro
 
   mediatools-frontend:
     build:

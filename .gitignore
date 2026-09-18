@@ -22,6 +22,9 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
+# Cookies de YouTube (secreto, no commitear)
+cookies.txt
+
 # IDEs
 .idea/
 .vscode/
