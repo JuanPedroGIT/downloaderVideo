@@ -10,7 +10,7 @@
 
     <div class="tool-grid">
       <!-- Video Downloader (solo para el propietario) -->
-      <RouterLink v-if="auth.canDownload" to="/video" class="tool-card">
+      <RouterLink v-if="canDownload" to="/video" class="tool-card">
         <div class="tool-card__icon">🎬</div>
         <div class="tool-card__body">
           <h2 class="tool-card__title">Video Downloader</h2>
