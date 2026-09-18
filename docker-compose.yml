@@ -39,6 +39,7 @@ services:
       APP_ENV: dev
       DATABASE_URL: "postgresql://mediatools:${MEDIATOOLS_DB_PASS}@shared-postgres-db:5432/mediatools?serverVersion=16&charset=utf8"
       MESSENGER_TRANSPORT_DSN: "redis://shared-redis:6379/0"
+      REDIS_URL: "redis://shared-redis:6379"
     networks:
       - shared-network
     volumes:
