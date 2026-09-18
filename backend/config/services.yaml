@@ -40,6 +40,11 @@ services:
         arguments:
             $downloadAllowedUsernames: '%downloader.allowed_usernames%'
 
+    # ── Endpoint /api/auth/me (informa al front si puede descargar) ───────────
+    App\Controller\MeController:
+        arguments:
+            $downloadAllowedUsernames: '%downloader.allowed_usernames%'
+
     # ── Job repository ────────────────────────────────────────────────────────
     App\Infrastructure\Repository\JobRepositoryInterface:
         alias: App\Infrastructure\Repository\RedisJobRepository

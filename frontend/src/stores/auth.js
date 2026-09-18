@@ -7,6 +7,7 @@ export const useAuthStore = defineStore(
   () => {
     const token    = ref('')
     const username = ref('')
+    const canDownload = ref(false)
 
     const isAuthenticated = computed(() => token.value !== '')
 
@@ -14,12 +15,36 @@ export const useAuthStore = defineStore(
       const data = await authService.login(credentials.username, credentials.password)
       token.value    = data.token
       username.value = data.username
+      await fetchMe()
       return data
     }
 
     function logout() {
       token.value    = ''
       username.value = ''
+      canDownload.value = false
+    }
+
+    // Pregunta al backend si el usuario actual puede usar el descargador
+    async function fetchMe() {
+      if (!token.value) {
+        canDownload.value = false
+        return
+      }
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || ''
+        const res = await fetch(`${apiBase}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token.value}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          canDownload.value = !!data.canDownload
+        } else {
+          canDownload.value = false
+        }
+      } catch {
+        canDownload.value = false
+      }
     }
 
     function authHeaders() {
@@ -29,7 +54,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    return { token, username, isAuthenticated, login, logout, authHeaders }
+    return { token, username, canDownload, isAuthenticated, login, logout, fetchMe, authHeaders }
   },
   {
     persist: {

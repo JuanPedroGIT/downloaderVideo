@@ -9,7 +9,7 @@ import router from '../router/index.js'
 
 export function useAuth() {
   const store = useAuthStore()
-  const { token, username, isAuthenticated } = storeToRefs(store)
+  const { token, username, isAuthenticated, canDownload } = storeToRefs(store)
 
   async function login(credentials) {
     return store.login(credentials)
@@ -18,6 +18,10 @@ export function useAuth() {
   function logout() {
     store.logout()
     router.push('/login')
+  }
+
+  async function fetchMe() {
+    return store.fetchMe()
   }
 
   function authHeaders() {
@@ -32,8 +36,10 @@ export function useAuth() {
     token,
     username,
     isAuthenticated,
+    canDownload,
     login,
     logout,
+    fetchMe,
     authHeaders,
     apiFetch: apiFetchWrapped,
   }

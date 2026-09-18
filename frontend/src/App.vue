@@ -6,11 +6,14 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import AppNavbar from './components/AppNavbar.vue'
 import { useAuth } from './composables/useAuth.js'
 
-const { isAuthenticated } = useAuth()
+const { isAuthenticated, fetchMe } = useAuth()
+
+onMounted(fetchMe)
 </script>
 
 <style>

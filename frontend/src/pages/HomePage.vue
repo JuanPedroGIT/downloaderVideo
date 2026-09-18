@@ -9,8 +9,8 @@
     </header>
 
     <div class="tool-grid">
-      <!-- Video Downloader -->
-      <RouterLink to="/video" class="tool-card">
+      <!-- Video Downloader (solo para el propietario) -->
+      <RouterLink v-if="auth.canDownload" to="/video" class="tool-card">
         <div class="tool-card__icon">🎬</div>
         <div class="tool-card__body">
           <h2 class="tool-card__title">Video Downloader</h2>
@@ -65,6 +65,9 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
+import { useAuth } from '../composables/useAuth.js'
+
+const { canDownload } = useAuth()
 </script>
 
 <style scoped>

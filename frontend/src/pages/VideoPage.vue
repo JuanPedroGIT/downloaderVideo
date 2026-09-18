@@ -16,9 +16,13 @@
 
     <hr class="divider" />
 
-    <div v-if="!auth.isAuthenticated" class="auth-required">
+    <div v-if="!auth.canDownload && !auth.isAuthenticated" class="auth-required">
       <p>🔒 Login required to use the video downloader.</p>
       <RouterLink to="/login" class="btn-download auth-required__link">Login</RouterLink>
+    </div>
+
+    <div v-else-if="!auth.canDownload" class="auth-required">
+      <p>🔒 This tool is only available for the site owner.</p>
     </div>
 
     <template v-else>
