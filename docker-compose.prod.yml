@@ -18,6 +18,7 @@ services:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
+      - ./.env:/app/.env:ro
 
   mediatools-worker:
     build:
@@ -39,6 +40,7 @@ services:
       - shared-network
     volumes:
       - tmp_downloads:/tmp
+      - ./.env:/app/.env:ro
 
   mediatools-frontend:
     build:
