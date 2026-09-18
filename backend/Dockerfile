@@ -28,11 +28,11 @@ FROM php:8.3-cli AS runtime-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip ffmpeg curl libzip-dev libicu-dev gnupg libpq-dev \
         libreoffice-writer libreoffice-common ghostscript \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && docker-php-ext-install zip intl pdo pdo_pgsql \
     && pecl install redis && docker-php-ext-enable redis \
-    && pip3 install --break-system-packages yt-dlp \
+    && pip3 install --break-system-packages "yt-dlp[default]" \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
