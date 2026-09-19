@@ -13,9 +13,7 @@ enum DownloadFormat: string
     case Mp4720   = 'mp4-720';
     case Mp4480   = 'mp4-480';
     case Mp3      = 'mp3';
-    case WebM     = 'webm';
-    case Audio    = 'audio';
-    case Video    = 'video';
+    case Mp3128   = 'mp3-128';
 
     public static function fromString(string $format): self
     {

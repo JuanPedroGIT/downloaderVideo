@@ -31,9 +31,7 @@ const formats = [
   { value: 'mp4-1080', label: 'MP4 1080p', icon: '🖥', description: 'Full HD, máximo 1080p' },
   { value: 'mp4-720',  label: 'MP4 720p',  icon: '🖥', description: 'HD 720p, buen balance' },
   { value: 'mp4-480',  label: 'MP4 480p',  icon: '📱', description: 'Ligero, máximo 480p' },
-  { value: 'mp3',      label: 'MP3',       icon: '🎵', description: 'Audio only – MP3' },
-  { value: 'webm',     label: 'WebM',      icon: '🌐', description: 'Video in WebM format' },
-  { value: 'audio',    label: 'Audio',     icon: '🎧', description: 'Best quality audio only' },
-  { value: 'video',    label: 'Video',     icon: '📹', description: 'Video only (no audio)' },
+  { value: 'mp3',      label: 'MP3 Máx',   icon: '🎵', description: 'Máxima calidad de audio (~245 kbps)' },
+  { value: 'mp3-128',  label: 'MP3 128k',  icon: '🎵', description: 'Ligero, calidad de podcast' },
 ]
 </script>
